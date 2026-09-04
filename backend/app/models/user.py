@@ -103,15 +103,22 @@ class TeamLeader(Base):
         nullable=False,
         index=True,
     )
+    # A team leader leads at most one team. TeamLeader.team_id is the single
+    # source of truth for this relationship; Team does not store a duplicate FK.
     team_id = Column(
         String,
         ForeignKey("teams.id", ondelete="SET NULL"),
+        unique=True,
         nullable=True,
         index=True,
     )
 
     user = relationship("User", back_populates="team_leader_profile")
-    team = relationship("Team", back_populates="leader", foreign_keys=[team_id])
+    team = relationship(
+        "Team",
+        back_populates="leader",
+        foreign_keys=[team_id],
+    )
     workers = relationship("Worker", back_populates="team_leader")
 
 
@@ -133,6 +140,8 @@ class Worker(Base):
         nullable=True,
         index=True,
     )
+    # Kept as an explicit assignment so a worker's leadership/supervisor scope
+    # can be validated by the service layer when organizational structures vary.
     team_leader_id = Column(
         String,
         ForeignKey("team_leaders.id", ondelete="SET NULL"),
