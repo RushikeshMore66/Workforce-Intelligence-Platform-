@@ -1,10 +1,16 @@
-from typing import Generator
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
 from app.config import settings
 
-# For SQLite during tests or PostgreSQL in production
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+
+connect_args = {}
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+
 
 engine = create_engine(
     settings.DATABASE_URL,
@@ -13,15 +19,27 @@ engine = create_engine(
     echo=settings.DEBUG,
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy ORM models."""
+
 
 
 def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency that yields a SQLAlchemy database session."""
+    """Provide one database session per FastAPI request."""
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
