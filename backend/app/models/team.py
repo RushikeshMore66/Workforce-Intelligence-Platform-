@@ -27,11 +27,7 @@ team_projects = Table(
 class Team(Base):
     __tablename__ = "teams"
 
-    id = Column(
-        String,
-        primary_key=True,
-        index=True,
-    )
+    id = Column(String, primary_key=True, index=True)
 
     name = Column(
         String,
@@ -42,24 +38,13 @@ class Team(Base):
 
     supervisor_id = Column(
         String,
-        ForeignKey(
-            "supervisors.id",
-            ondelete="SET NULL",
-        ),
+        ForeignKey("supervisors.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
 
-    team_leader_id = Column(
-        String,
-        ForeignKey(
-            "team_leaders.id",
-            ondelete="SET NULL",
-        ),
-        nullable=True,
-        index=True,
-    )
-
+    # TeamLeader.team_id is the source of truth for the team leader assignment.
+    # We intentionally do not keep a duplicate team_leader_id on Team.
     supervisor = relationship(
         "Supervisor",
         back_populates="teams",
@@ -69,7 +54,8 @@ class Team(Base):
     leader = relationship(
         "TeamLeader",
         back_populates="team",
-        foreign_keys=[team_leader_id],
+        foreign_keys="TeamLeader.team_id",
+        uselist=False,
     )
 
     workers = relationship(
