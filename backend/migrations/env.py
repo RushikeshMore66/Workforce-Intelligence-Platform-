@@ -1,39 +1,47 @@
-import os
-import sys
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from pathlib import Path
+
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
-# Add parent directory to path so app modules can be imported
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app.database import Base
 from app.config import settings
-import app.models  # Ensure all models are registered with Base.metadata
+from app.database import Base
+import app.models  # noqa: F401 - registers every ORM model with Base.metadata
+
 
 config = context.config
+
+# The database URL is always sourced from application settings so local,
+# staging, and production environments use their own DATABASE_URL.
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
 target_metadata = Base.metadata
 
 
+
 def run_migrations_offline() -> None:
+    """Run migrations without opening a database connection."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+        compare_server_default=True,
     )
 
     with context.begin_transaction():
         context.run_migrations()
 
 
+
 def run_migrations_online() -> None:
+    """Run migrations against the configured database."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -44,6 +52,8 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
         )
 
         with context.begin_transaction():
