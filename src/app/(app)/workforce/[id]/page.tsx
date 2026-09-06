@@ -9,8 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { formatDate } from '@/lib/utils';
 import { ArrowLeft, Mail, Briefcase, Users } from 'lucide-react';
-import { TASKS } from '@/lib/mock-data/tasks';
-
+import { getTasksByWorker } from '@/lib/api/tasks';
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { getWorkerById } = await import('@/lib/api/workers');
@@ -32,7 +31,7 @@ export default async function WorkerDetailPage({ params }: { params: Promise<{ i
   const activeProject = worker.activeProjectId ? await getProjectById(worker.activeProjectId) : null;
 
   // Tasks assigned to this worker
-  const workerTasks = TASKS.filter(t => t.assigneeId === id);
+  const workerTasks = await getTasksByWorker(id);
 
   const statusBadge = {
     ACTIVE:      { variant: 'success' as const, label: 'Active' },

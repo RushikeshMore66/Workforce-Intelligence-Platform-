@@ -37,7 +37,6 @@ class ProjectService:
         project_dict["status"] = ProjectStatusEnum.ACTIVE
         project_dict["health"] = ProjectHealthEnum.ON_TRACK
         project_dict["progress"] = 0
-        project_dict["team_count"] = 1
 
         project = self.repo.create(project_dict)
 

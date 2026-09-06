@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.notification import NotificationOut
 from app.repositories.notification_repo import NotificationRepository
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, authorize_notification_ownership
 from app.models.user import User
 from app.core.exceptions import EntityNotFoundException
 
@@ -24,12 +24,11 @@ def get_notifications(
 def mark_notification_as_read(
     notification_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
+    """Mark a notification as read. Users may only modify their own notifications."""
     repo = NotificationRepository(db)
-    notif = repo.get_by_id(notification_id)
-    if not notif:
-        raise EntityNotFoundException("Notification", notification_id)
+    notif = authorize_notification_ownership(notification_id, current_user, db)
     return repo.update(notif, {"read": True})
 
 

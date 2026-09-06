@@ -29,5 +29,5 @@ export async function markNotificationRead(id: string): Promise<void> {
 
 export async function markAllNotificationsRead(): Promise<void> {
   if (USE_MOCK) return mockNotificationsRepo.markAllAsRead();
-  await apiClient.patch('/notifications/read-all', {});
+  await apiClient.post('/notifications/read-all');
 }

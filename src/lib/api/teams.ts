@@ -26,12 +26,23 @@ export async function getTeamsBySupervisor(supervisorId: string): Promise<TeamVi
   return apiClient.get<TeamViewModel[]>(`/teams?supervisor_id=${supervisorId}`);
 }
 
-export async function getTeamLeaderById(id: string): Promise<TeamLeader | null> {
-  if (USE_MOCK) return mockTeamsRepo.getLeaderById(id);
-  return apiClient.get<TeamLeader>(`/team-leaders/${id}`);
+export async function getTeamWorkers(teamId: string): Promise<unknown[]> {
+  if (USE_MOCK) return []; // Covered by workers mock
+  return apiClient.get<unknown[]>(`/teams/${teamId}/workers`);
 }
 
+/**
+ * @deprecated Backend endpoint NOT AVAILABLE yet.
+ */
+export async function getTeamLeaderById(id: string): Promise<TeamLeader | null> {
+  if (USE_MOCK) return mockTeamsRepo.getLeaderById(id);
+  throw new Error('Not implemented in backend');
+}
+
+/**
+ * @deprecated Backend endpoint NOT AVAILABLE yet.
+ */
 export async function getAllTeamLeaders(): Promise<TeamLeader[]> {
   if (USE_MOCK) return mockTeamsRepo.getAllLeaders();
-  return apiClient.get<TeamLeader[]>('/team-leaders');
+  throw new Error('Not implemented in backend');
 }

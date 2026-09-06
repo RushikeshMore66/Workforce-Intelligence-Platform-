@@ -72,6 +72,16 @@ export async function createBlocker(input: CreateBlockerInput): Promise<Blocker>
   return apiClient.post<Blocker>('/blockers', input);
 }
 
+export async function updateBlocker(id: string, input: Partial<CreateBlockerInput> & { status?: 'OPEN' | 'RESOLVED' }): Promise<Blocker | null> {
+  if (USE_MOCK) {
+    await delay(300);
+    const blocker = BLOCKERS.find(b => b.id === id);
+    if (!blocker) return null;
+    return { ...blocker, ...input } as Blocker;
+  }
+  return apiClient.patch<Blocker>(`/blockers/${id}`, input);
+}
+
 export async function resolveBlocker(id: string): Promise<Blocker | null> {
   if (USE_MOCK) {
     await delay(300);
@@ -83,5 +93,5 @@ export async function resolveBlocker(id: string): Promise<Blocker | null> {
       resolvedDate: new Date().toISOString().split('T')[0],
     };
   }
-  return apiClient.patch<Blocker>(`/blockers/${id}/resolve`, {});
+  return apiClient.patch<Blocker>(`/blockers/${id}`, { status: 'RESOLVED' });
 }

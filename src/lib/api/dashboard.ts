@@ -19,5 +19,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 
 export async function getAttentionItems(): Promise<AttentionItem[]> {
   if (USE_MOCK) return mockDashboardRepo.getAttentionItems();
-  return apiClient.get<AttentionItem[]>('/dashboard/attention-items');
+  return apiClient.get<AttentionItem[]>('/dashboard/attention');
+}
+
+export async function getDashboardActivities(): Promise<unknown[]> {
+  if (USE_MOCK) return []; // Covered by activities mock
+  return apiClient.get<unknown[]>('/dashboard/activities');
 }

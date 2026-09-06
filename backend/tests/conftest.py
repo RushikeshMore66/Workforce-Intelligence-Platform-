@@ -1,3 +1,14 @@
+"""
+Shared pytest fixtures for the Workforce Intelligence Platform backend tests.
+
+The test environment uses SQLite in-memory for speed and isolation.
+Passwords are stored as a plain sha256 hex for test users ONLY to avoid
+a known passlib/bcrypt incompatibility with Python 3.11's bundled bcrypt
+(see: https://foss.heptapod.net/python-libs/passlib/-/issues/187).
+The production get_password_hash (bcrypt) remains unchanged.
+"""
+
+import hashlib
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -16,12 +27,15 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
-    
-    # Seed owner user
+
+    # Seed owner user with test-safe hash
     owner = User(
         id="usr-test-owner",
         name="Rajesh Mehta",
@@ -34,7 +48,7 @@ def setup_database():
     db.add(owner)
     db.commit()
     db.close()
-    
+
     yield
     Base.metadata.drop_all(bind=engine)
 

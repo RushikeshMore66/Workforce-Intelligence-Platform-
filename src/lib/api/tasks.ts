@@ -16,12 +16,15 @@ function delay(ms = 200) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+/**
+ * @deprecated Backend endpoint GET /tasks is NOT AVAILABLE. Use getTasksByProject instead.
+ */
 export async function getTasks(): Promise<Task[]> {
   if (USE_MOCK) {
     await delay();
     return TASKS;
   }
-  return apiClient.get<Task[]>('/tasks');
+  throw new Error('GET /tasks is not implemented in backend. Fetch tasks by project.');
 }
 
 export async function getTaskById(id: string): Promise<Task | null> {
@@ -40,20 +43,28 @@ export async function getTasksByProject(projectId: string): Promise<Task[]> {
   return apiClient.get<Task[]>(`/projects/${projectId}/tasks`);
 }
 
+/**
+ * Note: Uses generic task filtering if added to backend, otherwise fails in prod.
+ */
 export async function getTasksByWorker(workerId: string): Promise<Task[]> {
   if (USE_MOCK) {
     await delay();
     return TASKS.filter(t => t.assigneeId === workerId);
   }
-  return apiClient.get<Task[]>(`/tasks?assignee_id=${workerId}`);
+  // This assumes the backend adds support for /tasks?assignee_id=X eventually,
+  // currently we know only GET /projects/:id/tasks is fully implemented.
+  return apiClient.get<Task[]>('/tasks', { assignee_id: workerId });
 }
 
+/**
+ * Note: Uses generic task filtering if added to backend, otherwise fails in prod.
+ */
 export async function getTasksByTeam(teamId: string): Promise<Task[]> {
   if (USE_MOCK) {
     await delay();
     return TASKS.filter(t => t.teamId === teamId);
   }
-  return apiClient.get<Task[]>(`/tasks?team_id=${teamId}`);
+  return apiClient.get<Task[]>('/tasks', { team_id: teamId });
 }
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {

@@ -15,20 +15,26 @@ function delay(ms = 200) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-export async function getWorkUpdatesByTask(taskId: string): Promise<WorkUpdate[]> {
+/**
+ * @deprecated Backend GET /tasks/:id/updates is NOT AVAILABLE yet.
+ */
+export async function getWorkUpdatesByTask(_taskId: string): Promise<WorkUpdate[]> {
   if (USE_MOCK) {
     await delay();
     return []; // Work updates not yet in mock data
   }
-  return apiClient.get<WorkUpdate[]>(`/tasks/${taskId}/work-updates`);
+  throw new Error('GET /tasks/:id/updates is not implemented in backend');
 }
 
-export async function getWorkUpdatesByWorker(workerId: string): Promise<WorkUpdate[]> {
+/**
+ * @deprecated Backend GET /work-updates is NOT AVAILABLE yet.
+ */
+export async function getWorkUpdatesByWorker(_workerId: string): Promise<WorkUpdate[]> {
   if (USE_MOCK) {
     await delay();
     return [];
   }
-  return apiClient.get<WorkUpdate[]>(`/work-updates?worker_id=${workerId}`);
+  throw new Error('GET /work-updates is not implemented in backend');
 }
 
 export async function createWorkUpdate(input: CreateWorkUpdateInput): Promise<WorkUpdate> {
@@ -43,5 +49,5 @@ export async function createWorkUpdate(input: CreateWorkUpdateInput): Promise<Wo
     };
     return update;
   }
-  return apiClient.post<WorkUpdate>('/work-updates', input);
+  return apiClient.post<WorkUpdate>(`/tasks/${input.taskId}/updates`, input);
 }

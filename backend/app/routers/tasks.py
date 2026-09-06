@@ -6,10 +6,15 @@ from app.database import get_db
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, WorkUpdateCreate, WorkUpdateOut
 from app.models.task import Task, WorkUpdate
 from app.models.activity import ProjectActivity, ActivityTypeEnum
+from app.models.user import User, UserRoleEnum
 from app.repositories.task_repo import TaskRepository
-from app.auth.dependencies import get_current_user
-from app.models.user import User
-from app.core.exceptions import EntityNotFoundException
+from app.auth.dependencies import (
+    get_current_user,
+    require_team_lead,
+    authorize_task_access,
+    _get_worker_profile,
+)
+from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -18,21 +23,19 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 def get_task(
     task_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    repo = TaskRepository(db)
-    task = repo.get_by_id(task_id)
-    if not task:
-        raise EntityNotFoundException("Task", task_id)
-    return task
+    """Fetch a task. Raises 403 if the user is not authorized to see it."""
+    return authorize_task_access(task_id, current_user, db)
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_team_lead),
 ):
+    """Create a task. Requires OWNER, SUPERVISOR, or TEAM_LEADER role."""
     repo = TaskRepository(db)
     task_dict = task_in.model_dump()
     task_dict["id"] = f"task-{uuid.uuid4().hex[:6]}"
@@ -47,13 +50,12 @@ def update_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Update a task. Workers may only update their own assigned tasks."""
+    task = authorize_task_access(task_id, current_user, db)
+
     repo = TaskRepository(db)
-    task = repo.get_by_id(task_id)
-    if not task:
-        raise EntityNotFoundException("Task", task_id)
-    
     updated = repo.update(task, task_in.model_dump(exclude_unset=True))
-    
+
     # Log task activity
     activity = ProjectActivity(
         id=f"act-{uuid.uuid4().hex[:6]}",
@@ -65,7 +67,7 @@ def update_task(
     )
     db.add(activity)
     db.commit()
-    
+
     return updated
 
 
@@ -76,15 +78,24 @@ def add_work_update(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    repo = TaskRepository(db)
-    task = repo.get_by_id(task_id)
-    if not task:
-        raise EntityNotFoundException("Task", task_id)
+    """Add a work update to a task.
+
+    Workers may only post updates on their own assigned tasks.
+    Supervisors and Team Leaders may post on tasks within their scope.
+    """
+    task = authorize_task_access(task_id, current_user, db)
+
+    # For workers specifically, worker_id is their own profile ID (not user ID)
+    worker_id = current_user.id
+    if current_user.role == UserRoleEnum.WORKER:
+        worker = _get_worker_profile(current_user, db)
+        if worker:
+            worker_id = worker.id
 
     work_update = WorkUpdate(
         id=f"wu-{uuid.uuid4().hex[:6]}",
         task_id=task_id,
-        worker_id=current_user.id,
+        worker_id=worker_id,
         description=update_in.description,
     )
     db.add(work_update)

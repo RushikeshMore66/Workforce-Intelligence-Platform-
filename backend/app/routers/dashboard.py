@@ -35,8 +35,28 @@ def get_recent_activities(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
+    from app.routers.projects import get_projects
+    from app.models.user import UserRoleEnum
+
+    # OWNER sees all activities
+    if _.role == UserRoleEnum.OWNER:
+        return (
+            db.query(ProjectActivity)
+            .order_by(ProjectActivity.timestamp.desc())
+            .limit(10)
+            .all()
+        )
+
+    # For other roles, use the existing project scoping logic
+    allowed_projects = get_projects(db=db, current_user=_)
+    if not allowed_projects:
+        return []
+    
+    allowed_project_ids = [p.id for p in allowed_projects]
+
     return (
         db.query(ProjectActivity)
+        .filter(ProjectActivity.project_id.in_(allowed_project_ids))
         .order_by(ProjectActivity.timestamp.desc())
         .limit(10)
         .all()

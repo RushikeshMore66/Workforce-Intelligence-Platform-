@@ -4,6 +4,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType } from './types';
 import { User, LoginCredentials } from '@/types';
 import * as authApi from '@/lib/api/auth';
+import { setUnauthorizedCallback } from '@/lib/api/client';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,6 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    // Register global 401 handler
+    setUnauthorizedCallback(() => {
+      authApi.logout();
+      setUser(null);
+    });
+  }, []);
 
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);

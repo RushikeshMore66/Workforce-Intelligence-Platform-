@@ -7,34 +7,33 @@
  *
  * All methods automatically:
  *  - Prepend NEXT_PUBLIC_API_URL + /api/v1
- *  - Attach the JWT Bearer token from localStorage
+ *  - Attach the Authorization header via getAuthHeaders() abstraction
  *  - Transform snake_case response keys to camelCase
  *  - Throw ApiRequestError on non-2xx responses
+ *  - Timeout after 10 seconds by default
  */
 
 import { toCamelCase } from './mappers';
+import { getStoredToken } from '../auth/storage';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1`;
 
-// ── Token storage ────────────────────────────────────────────
+// ── Event callbacks ──────────────────────────────────────────
 
-const TOKEN_KEY = 'wi_access_token';
+type UnauthorizedCallback = () => void;
+let onUnauthorized: UnauthorizedCallback | null = null;
 
-export function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+export function setUnauthorizedCallback(callback: UnauthorizedCallback) {
+  onUnauthorized = callback;
 }
 
-export function setStoredToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(TOKEN_KEY, token);
-  }
-}
-
-export function clearStoredToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY);
-  }
+/**
+ * Abstraction point for Phase 4 authentication.
+ * Services should not know where tokens are stored.
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // ── Error class ──────────────────────────────────────────────
@@ -52,33 +51,65 @@ export class ApiRequestError extends Error {
 
 // ── Core fetch wrapper ───────────────────────────────────────
 
-async function request<T>(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<T> {
-  const token = getStoredToken();
+export type RequestParams = Record<string, string | number | boolean | null | undefined>;
 
+interface RequestConfig {
+  method: string;
+  path: string;
+  body?: unknown;
+  params?: RequestParams;
+  signal?: AbortSignal;
+}
+
+async function request<T>({ method, path, body, params, signal }: RequestConfig): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...getAuthHeaders(),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  let url = `${API_BASE}${path}`;
+
+  if (params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, String(value));
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
   }
 
-  const url = `${API_BASE}${path}`;
+  // Set default 10 second timeout if no signal provided
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const fetchSignal = signal ?? controller.signal;
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: fetchSignal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiRequestError(408, 'Request timeout exceeded');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 401) {
-    // Token expired or invalid — clear it so the auth layer can react
-    clearStoredToken();
+    // Notify the auth layer so it can clear state and redirect
+    if (onUnauthorized) {
+      onUnauthorized();
+    }
     throw new ApiRequestError(401, 'Unauthorized — please log in again.');
   }
 
@@ -108,9 +139,18 @@ async function request<T>(
 // ── Public API ───────────────────────────────────────────────
 
 export const apiClient = {
-  get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
-  put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
-  patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
-  delete: <T>(path: string) => request<T>('DELETE', path),
+  get: <T>(path: string, params?: RequestParams, signal?: AbortSignal) => 
+    request<T>({ method: 'GET', path, params, signal }),
+  post: <T>(path: string, body?: unknown, params?: RequestParams, signal?: AbortSignal) => 
+    request<T>({ method: 'POST', path, body, params, signal }),
+  put: <T>(path: string, body?: unknown, params?: RequestParams, signal?: AbortSignal) => 
+    request<T>({ method: 'PUT', path, body, params, signal }),
+  patch: <T>(path: string, body?: unknown, params?: RequestParams, signal?: AbortSignal) => 
+    request<T>({ method: 'PATCH', path, body, params, signal }),
+  delete: <T>(path: string, params?: RequestParams, signal?: AbortSignal) => 
+    request<T>({ method: 'DELETE', path, params, signal }),
 };
+
+export function isApiError(err: unknown): err is ApiRequestError {
+  return err instanceof ApiRequestError;
+}

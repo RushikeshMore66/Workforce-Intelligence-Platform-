@@ -160,3 +160,7 @@ class Project(Base):
         cascade="all, delete-orphan",
         order_by="ProjectActivity.timestamp.desc()",
     )
+
+    @property
+    def team_count(self) -> int:
+        return len(self.teams) if self.teams else 0

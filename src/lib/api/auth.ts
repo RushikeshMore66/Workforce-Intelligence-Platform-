@@ -7,7 +7,8 @@
  */
 
 import { User, LoginCredentials, AuthTokens } from '@/types';
-import { apiClient, setStoredToken, clearStoredToken, getStoredToken } from './client';
+import { apiClient } from './client';
+import { setStoredToken, clearStoredToken, getStoredToken } from '../auth/storage';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
@@ -40,7 +41,7 @@ export async function login(credentials: LoginCredentials): Promise<User> {
   }
 
   const tokens = await apiClient.post<AuthTokens>('/auth/login', {
-    username: credentials.email, // FastAPI OAuth2 uses 'username'
+    email: credentials.email,
     password: credentials.password,
   });
   setStoredToken(tokens.accessToken);

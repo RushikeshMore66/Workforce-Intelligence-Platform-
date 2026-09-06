@@ -21,7 +21,7 @@ export async function getRecentActivities(limit = 10): Promise<ProjectActivity[]
     await delay();
     return PROJECT_ACTIVITIES.slice(0, limit);
   }
-  return apiClient.get<ProjectActivity[]>(`/activities?limit=${limit}`);
+  return apiClient.get<ProjectActivity[]>('/dashboard/activities', { limit });
 }
 
 export async function getActivitiesByProject(projectId: string): Promise<ProjectActivity[]> {
@@ -32,10 +32,13 @@ export async function getActivitiesByProject(projectId: string): Promise<Project
   return apiClient.get<ProjectActivity[]>(`/projects/${projectId}/activities`);
 }
 
+/**
+ * @deprecated Backend endpoint GET /activities?user_id=X is NOT AVAILABLE yet.
+ */
 export async function getActivitiesByUser(userId: string): Promise<ProjectActivity[]> {
   if (USE_MOCK) {
     await delay();
     return PROJECT_ACTIVITIES.filter(a => a.userId === userId);
   }
-  return apiClient.get<ProjectActivity[]>(`/activities?user_id=${userId}`);
+  throw new Error('Not implemented in backend');
 }
