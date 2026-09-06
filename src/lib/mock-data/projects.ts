@@ -1,6 +1,6 @@
-import { Project } from '@/types';
+import { ProjectViewModel } from '@/types';
 
-export const INITIAL_PROJECTS: Project[] = [
+export const INITIAL_PROJECTS: ProjectViewModel[] = [
   // ── ACTIVE / ON_TRACK ──
   {
     id: 'proj-1',

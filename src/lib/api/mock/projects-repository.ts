@@ -1,4 +1,4 @@
-import { Project, CreateProjectInput, UpdateProjectInput } from '@/types';
+import { ProjectViewModel, CreateProjectInput, UpdateProjectInput } from '@/types';
 import { INITIAL_PROJECTS } from '@/lib/mock-data/projects';
 
 const STORAGE_KEY = 'wi_mock_projects_v2';
@@ -8,7 +8,7 @@ function delay(ms = 300) {
 }
 
 class ProjectsRepository {
-  private getProjects(): Project[] {
+  private getProjects(): ProjectViewModel[] {
     if (typeof window === 'undefined') return INITIAL_PROJECTS;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -16,32 +16,32 @@ class ProjectsRepository {
       return INITIAL_PROJECTS;
     }
     try {
-      return JSON.parse(stored) as Project[];
+      return JSON.parse(stored) as ProjectViewModel[];
     } catch {
       return INITIAL_PROJECTS;
     }
   }
 
-  private saveProjects(projects: Project[]) {
+  private saveProjects(projects: ProjectViewModel[]) {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     }
   }
 
-  async getAll(): Promise<Project[]> {
+  async getAll(): Promise<ProjectViewModel[]> {
     await delay(300);
     return this.getProjects();
   }
 
-  async getById(id: string): Promise<Project | null> {
+  async getById(id: string): Promise<ProjectViewModel | null> {
     await delay(200);
     return this.getProjects().find(p => p.id === id) ?? null;
   }
 
-  async create(input: CreateProjectInput): Promise<Project> {
+  async create(input: CreateProjectInput): Promise<ProjectViewModel> {
     await delay(500);
     const projects = this.getProjects();
-    const newProject: Project = {
+    const newProject: ProjectViewModel = {
       ...input,
       id: `proj-${Date.now()}`,
       status: 'PLANNED',
@@ -54,7 +54,7 @@ class ProjectsRepository {
     return newProject;
   }
 
-  async update(id: string, input: UpdateProjectInput): Promise<Project | null> {
+  async update(id: string, input: UpdateProjectInput): Promise<ProjectViewModel | null> {
     await delay(400);
     const projects = this.getProjects();
     const idx = projects.findIndex(p => p.id === id);

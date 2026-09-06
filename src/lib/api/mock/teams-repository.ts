@@ -1,4 +1,4 @@
-import { Team, TeamLeader } from '@/types';
+import { TeamViewModel, TeamLeader } from '@/types';
 import { TEAMS, TEAM_LEADERS } from '@/lib/mock-data/users';
 
 function delay(ms = 250) {
@@ -6,17 +6,17 @@ function delay(ms = 250) {
 }
 
 class TeamsRepository {
-  async getAll(): Promise<Team[]> {
+  async getAll(): Promise<TeamViewModel[]> {
     await delay();
     return TEAMS;
   }
 
-  async getById(id: string): Promise<Team | null> {
+  async getById(id: string): Promise<TeamViewModel | null> {
     await delay(150);
     return TEAMS.find(t => t.id === id) ?? null;
   }
 
-  async getBySupervisor(supervisorId: string): Promise<Team[]> {
+  async getBySupervisor(supervisorId: string): Promise<TeamViewModel[]> {
     await delay();
     return TEAMS.filter(t => t.supervisorId === supervisorId);
   }

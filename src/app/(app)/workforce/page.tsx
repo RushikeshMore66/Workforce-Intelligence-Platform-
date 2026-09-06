@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { getWorkers } from '@/lib/api/workers';
 import { getTeams } from '@/lib/api/teams';
-import { Worker, Team } from '@/types';
+import { WorkerViewModel, TeamViewModel } from '@/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,8 @@ import { SkeletonTable } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
 export default function WorkforcePage() {
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [workers, setWorkers] = useState<WorkerViewModel[]>([]);
+  const [teams, setTeams] = useState<TeamViewModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [teamFilter, setTeamFilter] = useState('');

@@ -5,25 +5,25 @@
  * In API mode: communicates with /api/v1/teams endpoints.
  */
 
-import { Team, TeamLeader } from '@/types';
+import { TeamViewModel, TeamLeader } from '@/types';
 import { apiClient } from './client';
 import { mockTeamsRepo } from './mock/teams-repository';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
-export async function getTeams(): Promise<Team[]> {
+export async function getTeams(): Promise<TeamViewModel[]> {
   if (USE_MOCK) return mockTeamsRepo.getAll();
-  return apiClient.get<Team[]>('/teams');
+  return apiClient.get<TeamViewModel[]>('/teams');
 }
 
-export async function getTeamById(id: string): Promise<Team | null> {
+export async function getTeamById(id: string): Promise<TeamViewModel | null> {
   if (USE_MOCK) return mockTeamsRepo.getById(id);
-  return apiClient.get<Team>(`/teams/${id}`);
+  return apiClient.get<TeamViewModel>(`/teams/${id}`);
 }
 
-export async function getTeamsBySupervisor(supervisorId: string): Promise<Team[]> {
+export async function getTeamsBySupervisor(supervisorId: string): Promise<TeamViewModel[]> {
   if (USE_MOCK) return mockTeamsRepo.getBySupervisor(supervisorId);
-  return apiClient.get<Team[]>(`/teams?supervisor_id=${supervisorId}`);
+  return apiClient.get<TeamViewModel[]>(`/teams?supervisor_id=${supervisorId}`);
 }
 
 export async function getTeamLeaderById(id: string): Promise<TeamLeader | null> {

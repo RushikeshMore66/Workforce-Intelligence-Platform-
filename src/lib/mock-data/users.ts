@@ -1,4 +1,4 @@
-import { Supervisor, Team, TeamLeader, Worker } from '@/types';
+import { Supervisor, TeamViewModel, TeamLeader, WorkerViewModel } from '@/types';
 
 // ============================================================
 // SUPERVISORS
@@ -66,7 +66,7 @@ export const TEAM_LEADERS: TeamLeader[] = [
 // ============================================================
 // TEAMS
 // ============================================================
-export const TEAMS: Team[] = [
+export const TEAMS: TeamViewModel[] = [
   { id: 'team-1', name: 'Backend Engineering', supervisorId: 'sup-1', teamLeaderId: 'tl-1', memberCount: 18, projectIds: ['proj-1', 'proj-4'] },
   { id: 'team-2', name: 'Frontend Engineering', supervisorId: 'sup-2', teamLeaderId: 'tl-2', memberCount: 15, projectIds: ['proj-2', 'proj-7'] },
   { id: 'team-3', name: 'QA & Testing', supervisorId: 'sup-3', teamLeaderId: 'tl-3', memberCount: 12, projectIds: ['proj-3', 'proj-10'] },
@@ -90,8 +90,8 @@ const makeWorker = (
   inProgress: number,
   pending: number,
   blocked: number,
-  status: Worker['status'] = 'ACTIVE',
-): Worker => ({
+  status: WorkerViewModel['status'] = 'ACTIVE',
+): WorkerViewModel => ({
   id,
   name,
   email: `${name.toLowerCase().replace(' ', '.')}@apexsoftware.in`,
@@ -108,7 +108,7 @@ const makeWorker = (
   blockedTaskCount: blocked,
 });
 
-export const WORKERS: Worker[] = [
+export const WORKERS: WorkerViewModel[] = [
   // Backend Engineering (team-1, sup-1, tl-1) — 18 members
   makeWorker('w-1',  'Rohan Verma',       'Senior Backend Developer',  'team-1', 'tl-1', 'sup-1', 'proj-1', 24, 3, 2, 0),
   makeWorker('w-2',  'Sunil Gupta',       'Backend Developer',         'team-1', 'tl-1', 'sup-1', 'proj-1', 18, 2, 4, 1),

@@ -5,7 +5,7 @@ import { getProjects } from '@/lib/api/projects';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Team, TeamLeader, Worker, Project } from '@/types';
+import { TeamViewModel, TeamLeader, WorkerViewModel, ProjectViewModel } from '@/types';
 import { Users } from 'lucide-react';
 
 export const metadata = { title: 'Teams' };
@@ -13,10 +13,10 @@ export const metadata = { title: 'Teams' };
 function TeamCard({
   team, leader, workers, projects,
 }: {
-  team: Team;
+  team: TeamViewModel;
   leader?: TeamLeader;
-  workers: Worker[];
-  projects: Project[];
+  workers: WorkerViewModel[];
+  projects: ProjectViewModel[];
 }) {
   const teamWorkers = workers.filter(w => w.teamId === team.id);
   const teamProjects = projects.filter(p => (team.projectIds ?? []).includes(p.id));

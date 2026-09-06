@@ -5,7 +5,7 @@ import { getWorkers } from '@/lib/api/workers';
 import { getTeams } from '@/lib/api/teams';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Supervisor, Project, Worker, Team } from '@/types';
+import { Supervisor, ProjectViewModel, WorkerViewModel, TeamViewModel } from '@/types';
 
 export const metadata = { title: 'Supervisors' };
 
@@ -13,9 +13,9 @@ function SupervisorCard({
   supervisor, projects, workers, teams,
 }: {
   supervisor: Supervisor;
-  projects: Project[];
-  workers: Worker[];
-  teams: Team[];
+  projects: ProjectViewModel[];
+  workers: WorkerViewModel[];
+  teams: TeamViewModel[];
 }) {
   const supProjects = projects.filter(p => supervisor.projectIds.includes(p.id));
   const supWorkers = workers.filter(w => w.supervisorId === supervisor.id);
