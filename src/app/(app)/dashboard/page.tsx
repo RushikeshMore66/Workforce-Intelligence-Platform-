@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import { FolderKanban, Users, CheckSquare, AlertTriangle, TrendingUp, ShieldAlert } from 'lucide-react';
-import { getDashboardMetrics, getAttentionItems, getRecentActivities } from '@/lib/api/dashboard';
+import { getDashboardMetrics, getAttentionItems } from '@/lib/api/dashboard';
+import { getRecentActivities } from '@/lib/api/activities';
 import { getProjects } from '@/lib/api/projects';
 import { getSupervisors } from '@/lib/api/supervisors';
-import { currentUser } from '@/lib/auth';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { ProjectHealthTable } from '@/components/dashboard/ProjectHealthTable';
 import { WorkforceOverview } from '@/components/dashboard/WorkforceOverview';
@@ -12,12 +13,6 @@ import { WorkProgress } from '@/components/dashboard/WorkProgress';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { SkeletonCard } from '@/components/ui/skeleton';
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
 
 export const metadata = { title: 'Dashboard' };
 
@@ -38,14 +33,7 @@ export default async function DashboardPage() {
     <div className="max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172033]">
-            {getGreeting()}, {currentUser.name.split(' ')[0]} 👋
-          </h1>
-          <p className="text-sm text-[#667085] mt-0.5">
-            {today} &middot; Here&apos;s what&apos;s happening across {currentUser.company}.
-          </p>
-        </div>
+        <DashboardHeader today={today} />
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ECFDF3] border border-[#ABEFC6]">
             <span className="inline-block w-2 h-2 rounded-full bg-[#12B76A]" />

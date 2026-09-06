@@ -23,13 +23,13 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
   if (!team) notFound();
 
   const [leader, supervisor, workers, allProjects] = await Promise.all([
-    getTeamLeaderById(team.teamLeaderId),
-    getSupervisorById(team.supervisorId),
+    team.teamLeaderId ? getTeamLeaderById(team.teamLeaderId) : Promise.resolve(null),
+    team.supervisorId ? getSupervisorById(team.supervisorId) : Promise.resolve(null),
     getWorkersByTeam(id),
     getProjects(),
   ]);
 
-  const teamProjects = allProjects.filter(p => team.projectIds.includes(p.id));
+  const teamProjects = allProjects.filter(p => (team.projectIds ?? []).includes(p.id));
   const totalCompleted = workers.reduce((a, w) => a + w.completedTaskCount, 0);
   const totalInProgress = workers.reduce((a, w) => a + w.inProgressTaskCount, 0);
   const totalBlocked = workers.reduce((a, w) => a + w.blockedTaskCount, 0);

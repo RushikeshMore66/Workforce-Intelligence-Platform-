@@ -1,6 +1,4 @@
-import { currentUser } from '@/lib/auth';
-import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { ProfileCard } from '@/components/settings/ProfileCard';
 
 export const metadata = { title: 'Settings' };
 
@@ -59,18 +57,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white border border-[#E7E8EC] rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Avatar initials={currentUser.avatarInitials} name={currentUser.name} size="lg" />
-          <div>
-            <div className="font-semibold text-[#172033] text-base">{currentUser.name}</div>
-            <div className="text-sm text-[#667085]">{currentUser.email}</div>
-            <div className="mt-2">
-              <Badge variant="gold" dot>{currentUser.role}</Badge>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ProfileCard />
 
       {/* Settings sections */}
       {SECTIONS.map(section => (

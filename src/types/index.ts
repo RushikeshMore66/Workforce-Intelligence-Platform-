@@ -1,5 +1,7 @@
 // ============================================================
 // ENUMS / UNION TYPES
+// These mirror the backend Python enums exactly.
+// DO NOT use magic strings elsewhere — always import from here.
 // ============================================================
 
 export type UserRole = 'OWNER' | 'SUPERVISOR' | 'TEAM_LEADER' | 'WORKER';
@@ -10,16 +12,44 @@ export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
 
+// Backend BlockerStatusEnum: OPEN | RESOLVED
 export type BlockerStatus = 'OPEN' | 'RESOLVED';
 
 export type WorkerStatus = 'ACTIVE' | 'ON_LEAVE' | 'UNAVAILABLE';
 
+// All 15 event types from backend ActivityTypeEnum
+export type ActivityType =
+  | 'PROJECT_CREATED'
+  | 'PROJECT_UPDATED'
+  | 'PROJECT_STATUS_CHANGED'
+  | 'PROJECT_ASSIGNED'
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_ASSIGNED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_COMPLETED'
+  | 'WORK_UPDATE_ADDED'
+  | 'BLOCKER_REPORTED'
+  | 'BLOCKER_RESOLVED'
+  | 'TEAM_CREATED'
+  | 'TEAM_UPDATED'
+  | 'MEMBER_ADDED'
+  | 'MEMBER_REMOVED'
+  | 'USER_CREATED'
+  | 'USER_UPDATED';
+
+// All 7 types from backend NotificationTypeEnum
 export type NotificationType =
   | 'PROJECT_ALERT'
   | 'BLOCKER'
   | 'DEADLINE'
+  | 'TASK'
+  | 'WORK_UPDATE'
   | 'TEAM_UPDATE'
   | 'SYSTEM';
+
+// All 4 priorities from backend NotificationPriorityEnum
+export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export type ReportType =
   | 'WEEKLY_WORKFORCE'
@@ -31,6 +61,8 @@ export type ReportType =
 
 // ============================================================
 // USER
+// Merged from User + CurrentUser (were identical shapes).
+// Matches backend UserOut schema.
 // ============================================================
 
 export interface User {
@@ -39,20 +71,16 @@ export interface User {
   email: string;
   role: UserRole;
   avatarInitials: string;
-  company?: string; // for OWNER
+  company?: string; // present for OWNER role
 }
 
-export interface CurrentUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  company: string;
-  avatarInitials: string;
-}
+/** @deprecated Use User directly. Kept for compatibility during migration. */
+export type CurrentUser = User & { company: string };
 
 // ============================================================
 // SUPERVISOR
+// Matches backend SupervisorOut schema.
+// name/email/avatarInitials are embedded from the related User.
 // ============================================================
 
 export interface Supervisor {
@@ -67,6 +95,9 @@ export interface Supervisor {
 
 // ============================================================
 // TEAM
+// Matches backend Team model.
+// memberCount is a display-only derived value — not a backend field.
+// projectIds is derived from the M2M teams<->projects relationship.
 // ============================================================
 
 export interface TeamLeader {
@@ -75,33 +106,37 @@ export interface TeamLeader {
   name: string;
   email: string;
   avatarInitials: string;
-  teamId: string;
+  teamId: string | null;
 }
 
 export interface Team {
   id: string;
   name: string;
   supervisorId: string;
-  teamLeaderId: string;
-  memberCount: number;
-  projectIds: string[];
+  teamLeaderId?: string; // derived from TeamLeader.team_id
+  // Display-only derived values — do NOT treat as authoritative source of truth
+  memberCount?: number;
+  projectIds?: string[];
 }
 
 // ============================================================
 // WORKER
+// Matches backend WorkerOut schema.
+// Task counts are derived display values from backend aggregation.
 // ============================================================
 
 export interface Worker {
   id: string;
   name: string;
   email: string;
-  role: string; // e.g. "Senior Backend Developer"
-  teamId: string;
-  teamLeaderId: string;
-  supervisorId: string;
+  role: string; // job title, e.g. "Senior Backend Developer"
+  teamId: string | null;
+  teamLeaderId: string | null;
+  supervisorId: string | null;
   avatarInitials: string;
   status: WorkerStatus;
   activeProjectId: string | null;
+  // Derived aggregate display values (computed by backend from tasks)
   completedTaskCount: number;
   inProgressTaskCount: number;
   pendingTaskCount: number;
@@ -110,6 +145,8 @@ export interface Worker {
 
 // ============================================================
 // PROJECT
+// Matches backend Project model / ProjectOut schema.
+// teamCount is a derived display value — not stored by backend.
 // ============================================================
 
 export interface Project {
@@ -120,13 +157,14 @@ export interface Project {
   startDate: string;       // ISO date string
   deadline: string;        // ISO date string
   priority: ProjectPriority;
-  supervisorId: string;
-  // System-maintained
+  supervisorId: string | null;
   status: ProjectStatus;
   health: ProjectHealth;
-  progress: number;        // 0–100
-  teamCount: number;
-  createdAt: string;       // ISO datetime
+  progress: number;        // 0–100, maintained by backend service layer
+  createdAt: string;       // ISO datetime string
+  updatedAt?: string;      // ISO datetime string
+  // Display-only derived value — backend returns teams[] count
+  teamCount?: number;
 }
 
 export interface CreateProjectInput {
@@ -147,6 +185,7 @@ export interface UpdateProjectInput extends Partial<CreateProjectInput> {
 
 // ============================================================
 // TASK
+// Matches backend Task model / TaskOut schema.
 // ============================================================
 
 export interface Task {
@@ -154,16 +193,32 @@ export interface Task {
   projectId: string;
   title: string;
   description?: string;
-  assigneeId: string;
-  teamId: string;
+  assigneeId: string | null;
+  teamId: string | null;
   status: TaskStatus;
   priority: ProjectPriority;
+  dueDate: string;         // ISO date string
+  createdAt: string;       // ISO datetime string
+  updatedAt?: string;      // ISO datetime string
+}
+
+export interface CreateTaskInput {
+  projectId: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  teamId?: string;
+  priority: ProjectPriority;
   dueDate: string;
-  createdAt: string;
+}
+
+export interface UpdateTaskInput extends Partial<CreateTaskInput> {
+  status?: TaskStatus;
 }
 
 // ============================================================
 // WORK UPDATE
+// Matches backend WorkUpdate model.
 // ============================================================
 
 export interface WorkUpdate {
@@ -171,42 +226,60 @@ export interface WorkUpdate {
   taskId: string;
   workerId: string;
   description: string;
-  timestamp: string;
+  timestamp: string;       // ISO datetime string
+}
+
+export interface CreateWorkUpdateInput {
+  taskId: string;
+  description: string;
 }
 
 // ============================================================
 // BLOCKER
+// Matches backend Blocker model.
 // ============================================================
 
 export interface Blocker {
   id: string;
   projectId: string;
+  taskId?: string | null;
+  title: string;
+  description: string;
+  reportedById: string | null;
+  teamId: string | null;
+  createdDate: string;     // ISO date string
+  resolvedDate?: string | null;
+  status: BlockerStatus;
+}
+
+export interface CreateBlockerInput {
+  projectId: string;
   taskId?: string;
   title: string;
   description: string;
-  reportedById: string;    // worker or team leader
-  teamId: string;
-  createdDate: string;
-  resolvedDate?: string;
-  status: BlockerStatus;
+  teamId?: string;
 }
 
 // ============================================================
 // PROJECT ACTIVITY
+// Matches backend ProjectActivity model.
+// All 18 ActivityType values are now represented.
 // ============================================================
 
 export interface ProjectActivity {
   id: string;
   projectId: string;
   description: string;
-  userId: string;
-  userName: string;
-  timestamp: string;
-  type: 'TASK_COMPLETED' | 'TASK_UPDATED' | 'BLOCKER_REPORTED' | 'BLOCKER_RESOLVED' | 'PROJECT_UPDATED' | 'MEMBER_ADDED';
+  userId: string | null;
+  userName: string;         // snapshot of name at event time
+  timestamp: string;        // ISO datetime string
+  type: ActivityType;
 }
 
 // ============================================================
 // NOTIFICATION
+// Matches backend Notification model.
+// All 7 NotificationType and 4 NotificationPriority values included.
 // ============================================================
 
 export interface Notification {
@@ -214,14 +287,15 @@ export interface Notification {
   type: NotificationType;
   title: string;
   description: string;
-  projectId?: string;
+  projectId?: string | null;
   read: boolean;
-  timestamp: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  timestamp: string;        // ISO datetime string
+  priority: NotificationPriority;
 }
 
 // ============================================================
-// ATTENTION ITEM (Dashboard)
+// ATTENTION ITEM (Dashboard — frontend-only abstraction)
+// Will eventually come from an Intelligence or Dashboard API endpoint.
 // ============================================================
 
 export interface AttentionItem {
@@ -235,6 +309,7 @@ export interface AttentionItem {
 
 // ============================================================
 // DASHBOARD
+// Will come from a backend aggregate endpoint.
 // ============================================================
 
 export interface DashboardMetrics {
@@ -255,6 +330,7 @@ export interface DashboardMetrics {
 
 // ============================================================
 // ANALYTICS
+// Will come from a backend analytics aggregate endpoint.
 // ============================================================
 
 export interface TaskCompletionDataPoint {
@@ -295,6 +371,7 @@ export interface AnalyticsData {
 
 // ============================================================
 // REPORTS
+// Will come from a backend report generation endpoint.
 // ============================================================
 
 export interface ReportFilter {
@@ -318,4 +395,37 @@ export interface ReportSection {
   title: string;
   content: string;
   data?: Record<string, number | string>[];
+}
+
+// ============================================================
+// AUTH
+// Used by AuthProvider and useAuth hook.
+// ============================================================
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  tokenType: string;
+}
+
+// ============================================================
+// API RESPONSE WRAPPERS
+// Common envelope shapes returned by the FastAPI backend.
+// ============================================================
+
+export interface ApiError {
+  success: false;
+  error: string;
+  detail: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
 }

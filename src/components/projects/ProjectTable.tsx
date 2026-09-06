@@ -96,7 +96,7 @@ export function ProjectTable({ projects, supervisors, search, statusFilter, heal
             <TableEmpty colSpan={8} message="No projects match your filters." />
           ) : (
             filtered.map(proj => {
-              const sup = supMap[proj.supervisorId];
+              const sup = proj.supervisorId ? supMap[proj.supervisorId] : undefined;
               const days = daysUntil(proj.deadline);
               return (
                 <TableRow key={proj.id}>

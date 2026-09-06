@@ -24,11 +24,11 @@ export default async function WorkerDetailPage({ params }: { params: Promise<{ i
   if (!worker) notFound();
 
   const [team, supervisor] = await Promise.all([
-    getTeamById(worker.teamId),
-    getSupervisorById(worker.supervisorId),
+    worker.teamId ? getTeamById(worker.teamId) : Promise.resolve(null),
+    worker.supervisorId ? getSupervisorById(worker.supervisorId) : Promise.resolve(null),
   ]);
 
-  const leader = team ? await getTeamLeaderById(team.teamLeaderId) : null;
+  const leader = team?.teamLeaderId ? await getTeamLeaderById(team.teamLeaderId) : null;
   const activeProject = worker.activeProjectId ? await getProjectById(worker.activeProjectId) : null;
 
   // Tasks assigned to this worker

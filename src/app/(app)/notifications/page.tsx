@@ -5,15 +5,18 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead } from
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { timeAgo } from '@/lib/utils';
-import { Bell, ShieldAlert, Calendar, Users, Info, CheckCheck } from 'lucide-react';
+import { Bell, ShieldAlert, Calendar, Users, Info, CheckCheck, CheckSquare, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import { NotificationType } from '@/types';
 
-const TYPE_CONFIG = {
-  BLOCKER:       { Icon: ShieldAlert, bg: 'bg-[#FEF3F2]', iconColor: 'text-[#B42318]' },
-  PROJECT_ALERT: { Icon: Bell,        bg: 'bg-[#FFFAEB]', iconColor: 'text-[#B54708]' },
-  DEADLINE:      { Icon: Calendar,    bg: 'bg-[#EFF8FF]', iconColor: 'text-[#1849A9]' },
-  TEAM_UPDATE:   { Icon: Users,       bg: 'bg-[#EEF1FA]', iconColor: 'text-[#263B80]' },
-  SYSTEM:        { Icon: Info,        bg: 'bg-[#F3F4F6]', iconColor: 'text-[#667085]' },
+const TYPE_CONFIG: Record<NotificationType, { Icon: React.ElementType; bg: string; iconColor: string }> = {
+  BLOCKER:       { Icon: ShieldAlert,  bg: 'bg-[#FEF3F2]', iconColor: 'text-[#B42318]' },
+  PROJECT_ALERT: { Icon: Bell,         bg: 'bg-[#FFFAEB]', iconColor: 'text-[#B54708]' },
+  DEADLINE:      { Icon: Calendar,     bg: 'bg-[#EFF8FF]', iconColor: 'text-[#1849A9]' },
+  TEAM_UPDATE:   { Icon: Users,        bg: 'bg-[#EEF1FA]', iconColor: 'text-[#263B80]' },
+  SYSTEM:        { Icon: Info,         bg: 'bg-[#F3F4F6]', iconColor: 'text-[#667085]' },
+  TASK:          { Icon: CheckSquare,  bg: 'bg-[#EEF1FA]', iconColor: 'text-[#263B80]' },
+  WORK_UPDATE:   { Icon: Pencil,       bg: 'bg-[#F9FAFB]', iconColor: 'text-[#667085]' },
 };
 
 export default function NotificationsPage() {
@@ -60,7 +63,7 @@ export default function NotificationsPage() {
           <div className="py-16 text-center text-sm text-[#9CA3AF]">No notifications.</div>
         ) : (
           notifications.map(notif => {
-            const cfg = TYPE_CONFIG[notif.type];
+            const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.SYSTEM;
             const Icon = cfg.Icon;
             return (
               <div

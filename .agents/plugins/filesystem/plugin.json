@@ -1,0 +1,5 @@
+{
+  "name": "filesystem",
+  "description": "MCP server for filesystem access and file operations",
+  "version": "1.0.0"
+}

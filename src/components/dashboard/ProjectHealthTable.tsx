@@ -47,7 +47,7 @@ export function ProjectHealthTable({ projects, supervisors }: Props) {
 
       <div className="divide-y divide-[#F3F4F6]">
         {topProjects.map(proj => {
-          const sup = supMap[proj.supervisorId];
+          const sup = proj.supervisorId ? supMap[proj.supervisorId] : undefined;
           const daysLeft = Math.ceil(
             (new Date(proj.deadline).getTime() - new Date().getTime()) / 86400000
           );

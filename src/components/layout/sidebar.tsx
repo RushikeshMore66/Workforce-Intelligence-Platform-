@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { currentUser } from '@/lib/auth';
+import { useAuth } from '@/lib/auth/useAuth';
 import { Avatar } from '@/components/ui/avatar';
 import { useState } from 'react';
 
@@ -51,6 +51,7 @@ interface SidebarProps {
 export function Sidebar({ onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { user: currentUser } = useAuth();
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
@@ -131,17 +132,19 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
       </div>
 
       {/* User */}
-      <div className={cn('border-t border-white/8 px-3 py-3 flex-shrink-0', collapsed && 'px-2')}>
-        <div className={cn('flex items-center gap-2.5', collapsed && 'justify-center')}>
-          <Avatar initials={currentUser.avatarInitials} name={currentUser.name} size="sm" />
-          {!collapsed && (
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-white truncate">{currentUser.name}</div>
-              <div className="text-[10px] text-[#94a3b8] truncate">{currentUser.company}</div>
-            </div>
-          )}
+      {currentUser && (
+        <div className={cn('border-t border-white/8 px-3 py-3 flex-shrink-0', collapsed && 'px-2')}>
+          <div className={cn('flex items-center gap-2.5', collapsed && 'justify-center')}>
+            <Avatar initials={currentUser.avatarInitials} name={currentUser.name} size="sm" />
+            {!collapsed && (
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-white truncate">{currentUser.name}</div>
+                <div className="text-[10px] text-[#94a3b8] truncate">{currentUser.company}</div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

@@ -1,40 +1,39 @@
+/**
+ * Projects API module.
+ * CRUD operations and queries for Project entities.
+ *
+ * In mock mode: reads/writes from localStorage-backed ProjectsRepository.
+ * In API mode: communicates with /api/v1/projects endpoints.
+ */
+
 import { CreateProjectInput, Project, UpdateProjectInput } from '@/types';
+import { apiClient } from './client';
 import { mockProjectsRepo } from './mock/projects-repository';
-import { TASKS } from '@/lib/mock-data/tasks';
-import { BLOCKERS } from '@/lib/mock-data/blockers';
-import { PROJECT_ACTIVITIES } from '@/lib/mock-data/activities';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 export async function getProjects(): Promise<Project[]> {
-  return mockProjectsRepo.getAll();
+  if (USE_MOCK) return mockProjectsRepo.getAll();
+  return apiClient.get<Project[]>('/projects');
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
-  return mockProjectsRepo.getById(id);
+  if (USE_MOCK) return mockProjectsRepo.getById(id);
+  return apiClient.get<Project>(`/projects/${id}`);
 }
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
-  return mockProjectsRepo.create(input);
+  if (USE_MOCK) return mockProjectsRepo.create(input);
+  return apiClient.post<Project>('/projects', input);
 }
 
 export async function updateProject(id: string, input: UpdateProjectInput): Promise<Project | null> {
-  return mockProjectsRepo.update(id, input);
+  if (USE_MOCK) return mockProjectsRepo.update(id, input);
+  return apiClient.patch<Project>(`/projects/${id}`, input);
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
-  return mockProjectsRepo.delete(id);
-}
-
-export async function getProjectTasks(projectId: string) {
-  await new Promise(r => setTimeout(r, 200));
-  return TASKS.filter(t => t.projectId === projectId);
-}
-
-export async function getProjectBlockers(projectId: string) {
-  await new Promise(r => setTimeout(r, 200));
-  return BLOCKERS.filter(b => b.projectId === projectId);
-}
-
-export async function getProjectActivities(projectId: string) {
-  await new Promise(r => setTimeout(r, 200));
-  return PROJECT_ACTIVITIES.filter(a => a.projectId === projectId);
+  if (USE_MOCK) return mockProjectsRepo.delete(id);
+  await apiClient.delete(`/projects/${id}`);
+  return true;
 }

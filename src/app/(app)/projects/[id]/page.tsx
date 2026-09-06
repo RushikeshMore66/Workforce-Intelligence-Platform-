@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import {
-  getProjectById, getProjectTasks, getProjectBlockers, getProjectActivities,
-} from '@/lib/api/projects';
+import { getProjectById } from '@/lib/api/projects';
+import { getTasksByProject } from '@/lib/api/tasks';
+import { getBlockersByProject } from '@/lib/api/blockers';
+import { getActivitiesByProject } from '@/lib/api/activities';
 import { getSupervisorById } from '@/lib/api/supervisors';
 import { getWorkers } from '@/lib/api/workers';
 import { ProjectHealthBadge } from '@/components/projects/ProjectHealthBadge';
@@ -16,8 +17,9 @@ import { formatDate, daysUntil, timeAgo } from '@/lib/utils';
 import {
   Calendar, Users, CheckSquare, ShieldAlert, ArrowLeft,
   Clock, CheckCircle2, AlertTriangle, RefreshCw, UserPlus, Pencil,
+  FolderOpen, GitBranch, User, Activity,
 } from 'lucide-react';
-import { Task, ProjectActivity } from '@/types';
+import { Task, ProjectActivity, ActivityType } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,17 +38,31 @@ function TaskStatusBadge({ status }: { status: Task['status'] }) {
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
-// ── Activity Icon ──
+// ── Activity Icon — covers all 18 ActivityType values ──
+const ACTIVITY_ICON_MAP: Record<ActivityType, { Icon: React.ElementType; color: string }> = {
+  TASK_COMPLETED:       { Icon: CheckCircle2, color: 'text-[#12B76A] bg-[#ECFDF3]' },
+  TASK_UPDATED:         { Icon: Pencil,       color: 'text-[#263B80] bg-[#EEF1FA]' },
+  TASK_CREATED:         { Icon: CheckSquare,  color: 'text-[#263B80] bg-[#EEF1FA]' },
+  TASK_ASSIGNED:        { Icon: User,         color: 'text-[#B08A3E] bg-[#FBF5E8]' },
+  TASK_STATUS_CHANGED:  { Icon: GitBranch,    color: 'text-[#667085] bg-[#F3F4F6]' },
+  BLOCKER_REPORTED:     { Icon: AlertTriangle,color: 'text-[#F04438] bg-[#FEF3F2]' },
+  BLOCKER_RESOLVED:     { Icon: CheckCircle2, color: 'text-[#12B76A] bg-[#ECFDF3]' },
+  PROJECT_CREATED:      { Icon: FolderOpen,   color: 'text-[#263B80] bg-[#EEF1FA]' },
+  PROJECT_UPDATED:      { Icon: RefreshCw,    color: 'text-[#667085] bg-[#F3F4F6]' },
+  PROJECT_STATUS_CHANGED: { Icon: Activity,   color: 'text-[#B54708] bg-[#FFFAEB]' },
+  PROJECT_ASSIGNED:     { Icon: UserPlus,     color: 'text-[#B08A3E] bg-[#FBF5E8]' },
+  WORK_UPDATE_ADDED:    { Icon: Pencil,       color: 'text-[#263B80] bg-[#EEF1FA]' },
+  TEAM_CREATED:         { Icon: Users,        color: 'text-[#263B80] bg-[#EEF1FA]' },
+  TEAM_UPDATED:         { Icon: Users,        color: 'text-[#667085] bg-[#F3F4F6]' },
+  MEMBER_ADDED:         { Icon: UserPlus,     color: 'text-[#B08A3E] bg-[#FBF5E8]' },
+  MEMBER_REMOVED:       { Icon: User,         color: 'text-[#F04438] bg-[#FEF3F2]' },
+  USER_CREATED:         { Icon: User,         color: 'text-[#263B80] bg-[#EEF1FA]' },
+  USER_UPDATED:         { Icon: User,         color: 'text-[#667085] bg-[#F3F4F6]' },
+};
+
 function ActivityIcon({ type }: { type: ProjectActivity['type'] }) {
-  const map = {
-    TASK_COMPLETED:   { Icon: CheckCircle2, color: 'text-[#12B76A] bg-[#ECFDF3]' },
-    TASK_UPDATED:     { Icon: Pencil,       color: 'text-[#263B80] bg-[#EEF1FA]' },
-    BLOCKER_REPORTED: { Icon: AlertTriangle,color: 'text-[#F04438] bg-[#FEF3F2]' },
-    BLOCKER_RESOLVED: { Icon: CheckCircle2, color: 'text-[#12B76A] bg-[#ECFDF3]' },
-    PROJECT_UPDATED:  { Icon: RefreshCw,    color: 'text-[#667085] bg-[#F3F4F6]' },
-    MEMBER_ADDED:     { Icon: UserPlus,     color: 'text-[#B08A3E] bg-[#FBF5E8]' },
-  }[type];
-  const { Icon, color } = map;
+  const cfg = ACTIVITY_ICON_MAP[type] ?? { Icon: Activity, color: 'text-[#667085] bg-[#F3F4F6]' };
+  const { Icon, color } = cfg;
   return (
     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${color}`}>
       <Icon className="w-3.5 h-3.5" />
@@ -63,15 +79,18 @@ export default async function ProjectDetailPage({
 
   const [project, tasks, blockers, activities, allWorkers] = await Promise.all([
     getProjectById(id),
-    getProjectTasks(id),
-    getProjectBlockers(id),
-    getProjectActivities(id),
+    getTasksByProject(id),
+    getBlockersByProject(id),
+    getActivitiesByProject(id),
     getWorkers(),
   ]);
 
   if (!project) notFound();
 
-  const supervisor = await getSupervisorById(project.supervisorId);
+  const supervisor = project.supervisorId
+    ? await getSupervisorById(project.supervisorId)
+    : null;
+
   const workerMap = Object.fromEntries(allWorkers.map(w => [w.id, w]));
 
   const openBlockers = blockers.filter(b => b.status === 'OPEN');
@@ -82,7 +101,7 @@ export default async function ProjectDetailPage({
   const daysLeft = daysUntil(project.deadline);
 
   // Get unique workers on this project via tasks
-  const workerIds = [...new Set(tasks.map(t => t.assigneeId))];
+  const workerIds = [...new Set(tasks.map(t => t.assigneeId).filter(Boolean))] as string[];
   const projectWorkers = workerIds.map(wid => workerMap[wid]).filter(Boolean);
 
   return (
@@ -185,7 +204,7 @@ export default async function ProjectDetailPage({
                 { label: 'Blocked',        value: blockedTasks,     color: 'text-[#B42318]' },
                 { label: 'Started',        value: formatDate(project.startDate), color: 'text-[#172033]' },
                 { label: 'Supervisor',     value: supervisor?.name ?? '—',       color: 'text-[#172033]' },
-                { label: 'Team Count',     value: project.teamCount,             color: 'text-[#172033]' },
+                { label: 'Team Count',     value: project.teamCount ?? '—',      color: 'text-[#172033]' },
               ].map(stat => (
                 <div key={stat.label} className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
                   <div className="text-xs text-[#667085] mb-1">{stat.label}</div>
@@ -202,7 +221,7 @@ export default async function ProjectDetailPage({
                 <div className="py-16 text-center text-sm text-[#9CA3AF] p-6">No tasks for this project yet.</div>
               ) : (
                 tasks.map(task => {
-                  const assignee = workerMap[task.assigneeId];
+                  const assignee = task.assigneeId ? workerMap[task.assigneeId] : null;
                   return (
                     <div key={task.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
                       <div className="flex-1 min-w-0">
@@ -241,7 +260,7 @@ export default async function ProjectDetailPage({
             ) : (
               <div className="space-y-3">
                 {blockers.map(bl => {
-                  const reporter = workerMap[bl.reportedById];
+                  const reporter = bl.reportedById ? workerMap[bl.reportedById] : null;
                   const ageMs = new Date().getTime() - new Date(bl.createdDate).getTime();
                   const ageDays = Math.floor(ageMs / 86400000);
                   return (

@@ -2,7 +2,7 @@
 import { usePathname } from 'next/navigation';
 import { Search, Bell, ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { currentUser } from '@/lib/auth';
+import { useAuth } from '@/lib/auth/useAuth';
 import { Avatar } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -34,6 +34,7 @@ function getPageTitle(pathname: string): string {
 export function Topbar() {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { user: currentUser, logout } = useAuth();
 
   // Breadcrumb segments for detail pages
   const segments = pathname.split('/').filter(Boolean);
@@ -80,35 +81,37 @@ export function Topbar() {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#F04438] border-2 border-white" />
         </button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[#F3F4F6] transition-colors">
-              <Avatar initials={currentUser.avatarInitials} size="xs" />
-              <span className="text-sm font-medium text-[#172033] hidden sm:block">{currentUser.name.split(' ')[0]}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#9CA3AF] hidden sm:block" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>
-              <div className="font-semibold text-[#172033] text-sm">{currentUser.name}</div>
-              <div className="text-xs text-[#667085] font-normal mt-0.5">{currentUser.email}</div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="w-3.5 h-3.5" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="w-3.5 h-3.5" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem destructive>
-              <LogOut className="w-3.5 h-3.5" />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {currentUser && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[#F3F4F6] transition-colors">
+                <Avatar initials={currentUser.avatarInitials} size="xs" />
+                <span className="text-sm font-medium text-[#172033] hidden sm:block">{currentUser.name.split(' ')[0]}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#9CA3AF] hidden sm:block" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>
+                <div className="font-semibold text-[#172033] text-sm">{currentUser.name}</div>
+                <div className="text-xs text-[#667085] font-normal mt-0.5">{currentUser.email}</div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="w-3.5 h-3.5" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="w-3.5 h-3.5" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} destructive>
+                <LogOut className="w-3.5 h-3.5" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   );

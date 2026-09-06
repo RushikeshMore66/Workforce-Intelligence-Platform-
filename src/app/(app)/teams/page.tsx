@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { getTeams, getAllTeamLeaders } from '@/lib/api/teams';
-import { getSupervisors } from '@/lib/api/supervisors';
 import { getWorkers } from '@/lib/api/workers';
 import { getProjects } from '@/lib/api/projects';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Team, TeamLeader, Supervisor, Worker, Project } from '@/types';
+import { Team, TeamLeader, Worker, Project } from '@/types';
 import { Users } from 'lucide-react';
 
 export const metadata = { title: 'Teams' };
@@ -20,7 +19,7 @@ function TeamCard({
   projects: Project[];
 }) {
   const teamWorkers = workers.filter(w => w.teamId === team.id);
-  const teamProjects = projects.filter(p => team.projectIds.includes(p.id));
+  const teamProjects = projects.filter(p => (team.projectIds ?? []).includes(p.id));
   const blockedCount = teamWorkers.reduce((acc, w) => acc + w.blockedTaskCount, 0);
   const inProgressCount = teamWorkers.reduce((acc, w) => acc + w.inProgressTaskCount, 0);
   const avgProgress = teamProjects.length
@@ -99,12 +98,11 @@ function TeamCard({
 }
 
 export default async function TeamsPage() {
-  const [teams, leaders, supervisors, workers, projects] = await Promise.all([
-    getTeams(), getAllTeamLeaders(), getSupervisors(), getWorkers(), getProjects(),
+  const [teams, leaders, workers, projects] = await Promise.all([
+    getTeams(), getAllTeamLeaders(), getWorkers(), getProjects(),
   ]);
 
   const leaderMap = Object.fromEntries(leaders.map(l => [l.teamId, l]));
-  const supMap = Object.fromEntries(supervisors.map(s => [s.id, s]));
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5">

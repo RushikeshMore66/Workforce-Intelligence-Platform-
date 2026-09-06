@@ -115,7 +115,7 @@ export default function WorkforcePage() {
                 <TableEmpty colSpan={7} message="No workers match your filters." />
               ) : (
                 filtered.map(w => {
-                  const team = teamMap[w.teamId];
+                  const team = w.teamId ? teamMap[w.teamId] : undefined;
                   return (
                     <TableRow key={w.id}>
                       <TableCell>
