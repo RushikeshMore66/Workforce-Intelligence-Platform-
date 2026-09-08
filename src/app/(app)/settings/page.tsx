@@ -1,6 +1,7 @@
-import { ProfileCard } from '@/components/settings/ProfileCard';
+'use client';
 
-export const metadata = { title: 'Settings' };
+import { useAuth } from '@/lib/auth/useAuth';
+import { ProfileCard } from '@/components/settings/ProfileCard';
 
 type Field = {
   label: string;
@@ -15,36 +16,38 @@ type Section = {
   fields: Field[];
 };
 
-const SECTIONS: Section[] = [
-  {
-    title: 'Account',
-    fields: [
-      { label: 'Full Name', value: 'Rajesh Mehta', type: 'text' },
-      { label: 'Email Address', value: 'rajesh.mehta@apexsoftware.in', type: 'email' },
-      { label: 'Company', value: 'Apex Software Solutions', type: 'text' },
-      { label: 'Role', value: 'Owner', type: 'text', readonly: true },
-    ],
-  },
-  {
-    title: 'Notifications',
-    fields: [
-      { label: 'Blocker alerts', value: 'Enabled', type: 'toggle', on: true },
-      { label: 'Deadline reminders', value: 'Enabled', type: 'toggle', on: true },
-      { label: 'Project updates', value: 'Enabled', type: 'toggle', on: true },
-      { label: 'Weekly digest email', value: 'Disabled', type: 'toggle', on: false },
-    ],
-  },
-  {
-    title: 'Display',
-    fields: [
-      { label: 'Date format', value: 'DD MMM YYYY', type: 'text', readonly: true },
-      { label: 'Time zone', value: 'Asia/Kolkata (IST, UTC+5:30)', type: 'text', readonly: true },
-      { label: 'Currency', value: 'INR (₹)', type: 'text', readonly: true },
-    ],
-  },
-];
-
 export default function SettingsPage() {
+  const { user } = useAuth();
+
+  const SECTIONS: Section[] = [
+    {
+      title: 'Account',
+      fields: [
+        { label: 'Full Name', value: user?.name || '', type: 'text' },
+        { label: 'Email Address', value: user?.email || '', type: 'email' },
+        { label: 'Company', value: user?.company || '', type: 'text' },
+        { label: 'Role', value: user?.role || '', type: 'text', readonly: true },
+      ],
+    },
+    {
+      title: 'Notifications',
+      fields: [
+        { label: 'Blocker alerts', value: 'Enabled', type: 'toggle', on: true },
+        { label: 'Deadline reminders', value: 'Enabled', type: 'toggle', on: true },
+        { label: 'Project updates', value: 'Enabled', type: 'toggle', on: true },
+        { label: 'Weekly digest email', value: 'Disabled', type: 'toggle', on: false },
+      ],
+    },
+    {
+      title: 'Display',
+      fields: [
+        { label: 'Date format', value: 'DD MMM YYYY', type: 'text', readonly: true },
+        { label: 'Time zone', value: 'Asia/Kolkata (IST, UTC+5:30)', type: 'text', readonly: true },
+        { label: 'Currency', value: 'INR (₹)', type: 'text', readonly: true },
+      ],
+    },
+  ];
+
   return (
     <div className="max-w-[700px] mx-auto space-y-6">
       <div>

@@ -1,31 +1,25 @@
-import { notFound } from 'next/navigation';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getProjectById } from '@/lib/api/projects';
-import { getTasksByProject } from '@/lib/api/tasks';
-import { getBlockersByProject } from '@/lib/api/blockers';
-import { getActivitiesByProject } from '@/lib/api/activities';
-import { getSupervisorById } from '@/lib/api/supervisors';
-import { getWorkers } from '@/lib/api/workers';
+import { useProjectDetail } from './useProjectDetail';
 import { ProjectHealthBadge } from '@/components/projects/ProjectHealthBadge';
 import { ProjectStatusBadge } from '@/components/projects/ProjectStatusBadge';
 import { ProjectPriorityBadge } from '@/components/projects/ProjectPriorityBadge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Avatar } from '@/components/ui/avatar';
 import { formatDate, daysUntil, timeAgo } from '@/lib/utils';
 import {
   Calendar, Users, CheckSquare, ShieldAlert, ArrowLeft,
   Clock, CheckCircle2, AlertTriangle, RefreshCw, UserPlus, Pencil,
-  FolderOpen, GitBranch, User, Activity,
+  FolderOpen, GitBranch, User, Activity, Search
 } from 'lucide-react';
 import { Task, ProjectActivity, ActivityType } from '@/types';
-
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const project = await getProjectById(id);
-  return { title: project?.name ?? 'Project' };
-}
+import { AccessDenied } from '@/components/auth/AccessDenied';
+import { SkeletonCard, SkeletonTable } from '@/components/ui/skeleton';
+import { isApiError } from '@/lib/api/client';
+import { Button } from '@/components/ui/button';
 
 // ── Task Status Badge ──
 function TaskStatusBadge({ status }: { status: Task['status'] }) {
@@ -70,39 +64,70 @@ function ActivityIcon({ type }: { type: ProjectActivity['type'] }) {
   );
 }
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
+  const { project, tasks, blockers, activities, fetchProject, fetchTasks, fetchBlockers, fetchActivities } = useProjectDetail(id);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  const [project, tasks, blockers, activities, allWorkers] = await Promise.all([
-    getProjectById(id),
-    getTasksByProject(id),
-    getBlockersByProject(id),
-    getActivitiesByProject(id),
-    getWorkers(),
-  ]);
+  useEffect(() => {
+    if (activeTab === 'tasks') fetchTasks();
+    if (activeTab === 'blockers') fetchBlockers();
+    if (activeTab === 'activity') fetchActivities();
+  }, [activeTab, fetchTasks, fetchBlockers, fetchActivities]);
 
-  if (!project) notFound();
+  if (project.isLoading && !project.hasFetched) {
+    return (
+      <div className="max-w-[1200px] mx-auto space-y-5">
+        <SkeletonCard className="h-[200px]" />
+        <SkeletonCard className="h-[400px]" />
+      </div>
+    );
+  }
 
-  const supervisor = project.supervisorId
-    ? await getSupervisorById(project.supervisorId)
-    : null;
+  if (project.error) {
+    if (isApiError(project.error)) {
+      if (project.error.status === 403) return <AccessDenied />;
+      if (project.error.status === 404) {
+        return (
+          <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+            <div className="bg-white border border-[#E7E8EC] rounded-xl p-12 text-center shadow-sm w-full max-w-md">
+              <div className="w-12 h-12 bg-[#F9FAFB] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E7E8EC]">
+                <Search className="w-6 h-6 text-[#9CA3AF]" />
+              </div>
+              <h3 className="text-base font-semibold text-[#172033]">Project not found</h3>
+              <p className="text-sm text-[#667085] mt-1 mb-6">The project you are looking for does not exist or has been removed.</p>
+              <Link href="/projects" className="inline-flex justify-center items-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#263B80] hover:bg-[#1E2E65] transition-colors">
+                Return to Projects
+              </Link>
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="bg-white border border-[#E7E8EC] rounded-xl p-12 text-center shadow-sm w-full max-w-md">
+          <AlertTriangle className="w-8 h-8 text-[#F04438] mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-[#172033]">Failed to load project</h3>
+          <p className="text-sm text-[#667085] mt-1 mb-4">There was a problem communicating with the server.</p>
+          <Button variant="outline" onClick={fetchProject}>
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const workerMap = Object.fromEntries(allWorkers.map(w => [w.id, w]));
+  const p = project.data;
+  if (!p) return null;
 
-  const openBlockers = blockers.filter(b => b.status === 'OPEN');
-  const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
-  const inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS').length;
-  const pendingTasks = tasks.filter(t => t.status === 'TODO').length;
-  const blockedTasks = tasks.filter(t => t.status === 'BLOCKED').length;
-  const daysLeft = daysUntil(project.deadline);
-
-  // Get unique workers on this project via tasks
-  const workerIds = [...new Set(tasks.map(t => t.assigneeId).filter(Boolean))] as string[];
-  const projectWorkers = workerIds.map(wid => workerMap[wid]).filter(Boolean);
+  const daysLeft = daysUntil(p.deadline);
+  const completedTasks = tasks.data ? tasks.data.filter(t => t.status === 'COMPLETED').length : 0;
+  const inProgressTasks = tasks.data ? tasks.data.filter(t => t.status === 'IN_PROGRESS').length : 0;
+  const pendingTasks = tasks.data ? tasks.data.filter(t => t.status === 'TODO').length : 0;
+  const blockedTasks = tasks.data ? tasks.data.filter(t => t.status === 'BLOCKED').length : 0;
+  const openBlockers = blockers.data ? blockers.data.filter(b => b.status === 'OPEN').length : 0;
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5">
@@ -113,7 +138,7 @@ export default async function ProjectDetailPage({
           Projects
         </Link>
         <span>/</span>
-        <span className="text-[#172033] font-medium">{project.name}</span>
+        <span className="text-[#172033] font-medium">{p.name}</span>
       </div>
 
       {/* Project Header */}
@@ -121,14 +146,14 @@ export default async function ProjectDetailPage({
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <ProjectStatusBadge status={project.status} />
-              <ProjectHealthBadge health={project.health} />
-              <ProjectPriorityBadge priority={project.priority} />
+              <ProjectStatusBadge status={p.status} />
+              <ProjectHealthBadge health={p.health} />
+              <ProjectPriorityBadge priority={p.priority} />
             </div>
-            <h1 className="text-xl font-bold text-[#172033] leading-tight">{project.name}</h1>
-            <p className="text-sm text-[#667085] mt-0.5">{project.client}</p>
-            {project.description && (
-              <p className="text-sm text-[#667085] mt-3 max-w-2xl leading-relaxed">{project.description}</p>
+            <h1 className="text-xl font-bold text-[#172033] leading-tight">{p.name}</h1>
+            <p className="text-sm text-[#667085] mt-0.5">{p.client}</p>
+            {p.description && (
+              <p className="text-sm text-[#667085] mt-3 max-w-2xl leading-relaxed">{p.description}</p>
             )}
           </div>
         </div>
@@ -141,8 +166,8 @@ export default async function ProjectDetailPage({
               Progress
             </div>
             <div className="flex items-center gap-2">
-              <Progress value={project.progress} className="flex-1" />
-              <span className="text-sm font-bold text-[#172033]">{project.progress}%</span>
+              <Progress value={p.progress} className="flex-1" />
+              <span className="text-sm font-bold text-[#172033]">{p.progress}%</span>
             </div>
           </div>
           <div>
@@ -150,7 +175,7 @@ export default async function ProjectDetailPage({
               <Calendar className="w-3.5 h-3.5" />
               Deadline
             </div>
-            <div className="text-sm font-semibold text-[#172033]">{formatDate(project.deadline)}</div>
+            <div className="text-sm font-semibold text-[#172033]">{formatDate(p.deadline)}</div>
             <div className={`text-xs mt-0.5 ${daysLeft < 30 ? 'text-[#B54708]' : 'text-[#667085]'}`}>
               {daysLeft > 0 ? `${daysLeft} days remaining` : 'Overdue'}
             </div>
@@ -158,35 +183,35 @@ export default async function ProjectDetailPage({
           <div>
             <div className="flex items-center gap-1.5 text-xs text-[#667085] mb-1">
               <Users className="w-3.5 h-3.5" />
-              Team Members
+              Team Size
             </div>
-            <div className="text-sm font-semibold text-[#172033]">{projectWorkers.length}</div>
+            <div className="text-sm font-semibold text-[#172033]">{p.teamCount}</div>
           </div>
           <div>
             <div className="flex items-center gap-1.5 text-xs text-[#667085] mb-1">
               <ShieldAlert className="w-3.5 h-3.5" />
               Open Blockers
             </div>
-            <div className={`text-sm font-semibold ${openBlockers.length > 0 ? 'text-[#B42318]' : 'text-[#172033]'}`}>
-              {openBlockers.length}
+            <div className={`text-sm font-semibold ${openBlockers > 0 ? 'text-[#B42318]' : 'text-[#172033]'}`}>
+              {blockers.hasFetched ? openBlockers : '...'}
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="bg-white border border-[#E7E8EC] rounded-xl overflow-hidden shadow-[0_1px_3px_0_rgba(16,24,40,0.06)]">
           <TabsList className="px-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">
               Tasks
-              <Badge variant="default" className="ml-1 text-[10px] px-1.5 py-0">{tasks.length}</Badge>
+              {tasks.data && <Badge variant="default" className="ml-1 text-[10px] px-1.5 py-0">{tasks.data.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="blockers">
               Blockers
-              {openBlockers.length > 0 && (
-                <Badge variant="danger" className="ml-1 text-[10px] px-1.5 py-0">{openBlockers.length}</Badge>
+              {openBlockers > 0 && (
+                <Badge variant="danger" className="ml-1 text-[10px] px-1.5 py-0">{openBlockers}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
@@ -197,14 +222,14 @@ export default async function ProjectDetailPage({
           <TabsContent value="overview" className="p-6">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Total Tasks',    value: tasks.length,     color: 'text-[#172033]' },
-                { label: 'Completed',      value: completedTasks,   color: 'text-[#027A48]' },
-                { label: 'In Progress',    value: inProgressTasks,  color: 'text-[#263B80]' },
-                { label: 'Pending',        value: pendingTasks,     color: 'text-[#667085]' },
-                { label: 'Blocked',        value: blockedTasks,     color: 'text-[#B42318]' },
-                { label: 'Started',        value: formatDate(project.startDate), color: 'text-[#172033]' },
-                { label: 'Supervisor',     value: supervisor?.name ?? '—',       color: 'text-[#172033]' },
-                { label: 'Team Count',     value: project.teamCount ?? '—',      color: 'text-[#172033]' },
+                { label: 'Total Tasks',    value: tasks.hasFetched && tasks.data ? tasks.data.length : '—',     color: 'text-[#172033]' },
+                { label: 'Completed',      value: tasks.hasFetched ? completedTasks : '—',   color: 'text-[#027A48]' },
+                { label: 'In Progress',    value: tasks.hasFetched ? inProgressTasks : '—',  color: 'text-[#263B80]' },
+                { label: 'Pending',        value: tasks.hasFetched ? pendingTasks : '—',     color: 'text-[#667085]' },
+                { label: 'Blocked',        value: tasks.hasFetched ? blockedTasks : '—',     color: 'text-[#B42318]' },
+                { label: 'Started',        value: formatDate(p.startDate), color: 'text-[#172033]' },
+                { label: 'Supervisor ID',  value: p.supervisorId ?? '—',       color: 'text-[#172033]' },
+                { label: 'Team Count',     value: p.teamCount ?? '—',      color: 'text-[#172033]' },
               ].map(stat => (
                 <div key={stat.label} className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
                   <div className="text-xs text-[#667085] mb-1">{stat.label}</div>
@@ -216,51 +241,60 @@ export default async function ProjectDetailPage({
 
           {/* Tasks */}
           <TabsContent value="tasks">
-            <div className="divide-y divide-[#F3F4F6]">
-              {tasks.length === 0 ? (
-                <div className="py-16 text-center text-sm text-[#9CA3AF] p-6">No tasks for this project yet.</div>
-              ) : (
-                tasks.map(task => {
-                  const assignee = task.assigneeId ? workerMap[task.assigneeId] : null;
-                  return (
-                    <div key={task.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-[#172033]">{task.title}</div>
-                        {assignee && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Avatar initials={assignee.avatarInitials} size="xs" />
-                            <span className="text-xs text-[#667085]">{assignee.name}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <Badge variant="default" className="hidden sm:inline-flex text-[10px]">
-                          {task.priority}
-                        </Badge>
-                        <div className="hidden md:flex items-center gap-1 text-xs text-[#9CA3AF]">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(task.dueDate)}
+            {tasks.isLoading ? (
+               <div className="p-5"><SkeletonTable rows={4} cols={4} /></div>
+            ) : tasks.error ? (
+              <div className="p-8 text-center text-sm text-[#F04438]">
+                Failed to load tasks.
+                <div className="mt-2"><Button variant="outline" size="sm" onClick={fetchTasks}>Retry</Button></div>
+              </div>
+            ) : !tasks.data || tasks.data.length === 0 ? (
+              <div className="py-16 text-center text-sm text-[#9CA3AF] p-6">No tasks for this project yet.</div>
+            ) : (
+              <div className="divide-y divide-[#F3F4F6]">
+                {tasks.data.map(task => (
+                  <div key={task.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-[#172033]">{task.title}</div>
+                      {task.assigneeId && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs text-[#667085]">Assignee ID: {task.assigneeId}</span>
                         </div>
-                        <TaskStatusBadge status={task.status} />
-                      </div>
+                      )}
                     </div>
-                  );
-                })
-              )}
-            </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <Badge variant="default" className="hidden sm:inline-flex text-[10px]">
+                        {task.priority}
+                      </Badge>
+                      <div className="hidden md:flex items-center gap-1 text-xs text-[#9CA3AF]">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(task.dueDate)}
+                      </div>
+                      <TaskStatusBadge status={task.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Blockers */}
           <TabsContent value="blockers" className="p-5">
-            {blockers.length === 0 ? (
+            {blockers.isLoading ? (
+               <div className="p-5"><SkeletonTable rows={2} cols={1} /></div>
+            ) : blockers.error ? (
+              <div className="p-8 text-center text-sm text-[#F04438]">
+                Failed to load blockers.
+                <div className="mt-2"><Button variant="outline" size="sm" onClick={fetchBlockers}>Retry</Button></div>
+              </div>
+            ) : !blockers.data || blockers.data.length === 0 ? (
               <div className="py-12 text-center">
                 <div className="text-[#12B76A] font-medium text-sm">No active blockers</div>
                 <div className="text-xs text-[#9CA3AF] mt-1">All tracked work is progressing without reported blockers.</div>
               </div>
             ) : (
               <div className="space-y-3">
-                {blockers.map(bl => {
-                  const reporter = bl.reportedById ? workerMap[bl.reportedById] : null;
+                {blockers.data.map(bl => {
                   const ageMs = new Date().getTime() - new Date(bl.createdDate).getTime();
                   const ageDays = Math.floor(ageMs / 86400000);
                   return (
@@ -279,10 +313,9 @@ export default async function ProjectDetailPage({
                           </div>
                           <p className="text-sm text-[#667085] mt-1.5">{bl.description}</p>
                           <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-[#9CA3AF]">
-                            {reporter && (
+                            {bl.reportedById && (
                               <span className="flex items-center gap-1">
-                                <Avatar initials={reporter.avatarInitials} size="xs" />
-                                {reporter.name}
+                                Reporter ID: {bl.reportedById}
                               </span>
                             )}
                             <span>Created {formatDate(bl.createdDate)}</span>
@@ -303,43 +336,25 @@ export default async function ProjectDetailPage({
 
           {/* Team */}
           <TabsContent value="team" className="p-5">
-            {supervisor && (
-              <div className="mb-5">
-                <div className="wi-section-title mb-3">Supervisor</div>
-                <Link href={`/supervisors/${project.supervisorId}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#F3F4F6] transition-colors group w-fit">
-                  <Avatar initials={supervisor.avatarInitials} name={supervisor.name} size="md" />
-                  <div>
-                    <div className="text-sm font-semibold text-[#172033] group-hover:text-[#263B80] transition-colors">
-                      {supervisor.name}
-                    </div>
-                    <div className="text-xs text-[#667085]">{supervisor.email}</div>
-                  </div>
-                </Link>
-              </div>
-            )}
-            <div>
-              <div className="wi-section-title mb-3">Team Members ({projectWorkers.length})</div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {projectWorkers.map(w => (
-                  <Link key={w.id} href={`/workforce/${w.id}`} className="flex items-center gap-3 p-3 border border-[#E7E8EC] rounded-lg hover:border-[#263B80]/30 hover:bg-[#EEF1FA]/30 transition-colors">
-                    <Avatar initials={w.avatarInitials} name={w.name} size="sm" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-[#172033] truncate">{w.name}</div>
-                      <div className="text-xs text-[#667085] truncate">{w.role}</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            <div className="py-12 text-center text-sm text-[#9CA3AF]">
+               Detailed Team information will be integrated in Phase 7.8 (Workforce).
             </div>
           </TabsContent>
 
           {/* Activity */}
           <TabsContent value="activity" className="p-5">
-            {activities.length === 0 ? (
+            {activities.isLoading ? (
+               <div className="p-5"><SkeletonTable rows={4} cols={1} /></div>
+            ) : activities.error ? (
+              <div className="p-8 text-center text-sm text-[#F04438]">
+                Failed to load activities.
+                <div className="mt-2"><Button variant="outline" size="sm" onClick={fetchActivities}>Retry</Button></div>
+              </div>
+            ) : !activities.data || activities.data.length === 0 ? (
               <div className="py-12 text-center text-sm text-[#9CA3AF]">No recent activity.</div>
             ) : (
               <div className="space-y-4">
-                {activities.map(act => (
+                {activities.data.map(act => (
                   <div key={act.id} className="flex items-start gap-3">
                     <ActivityIcon type={act.type} />
                     <div className="flex-1 min-w-0">

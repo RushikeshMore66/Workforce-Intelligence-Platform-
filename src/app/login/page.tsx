@@ -19,7 +19,9 @@ function LoginForm() {
   useEffect(() => {
     if (isAuthenticated) {
       // Validate return URL to prevent open redirects
-      const safeReturnUrl = (returnUrl && returnUrl.startsWith('/')) ? returnUrl : '/dashboard';
+      const safeReturnUrl = (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) 
+        ? returnUrl 
+        : '/dashboard';
       router.replace(safeReturnUrl);
     }
   }, [isAuthenticated, router, returnUrl]);

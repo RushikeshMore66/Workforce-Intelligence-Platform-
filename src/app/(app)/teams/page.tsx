@@ -1,108 +1,45 @@
+'use client';
+
 import Link from 'next/link';
-import { getTeams, getAllTeamLeaders } from '@/lib/api/teams';
-import { getWorkers } from '@/lib/api/workers';
-import { getProjects } from '@/lib/api/projects';
-import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { TeamViewModel, TeamLeader, WorkerViewModel, ProjectViewModel } from '@/types';
-import { Users } from 'lucide-react';
+import { useTeams } from './useTeams';
+import { TeamViewModel } from '@/types';
+import { Users, RefreshCw } from 'lucide-react';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
-export const metadata = { title: 'Teams' };
-
-function TeamCard({
-  team, leader, workers, projects,
-}: {
-  team: TeamViewModel;
-  leader?: TeamLeader;
-  workers: WorkerViewModel[];
-  projects: ProjectViewModel[];
-}) {
-  const teamWorkers = workers.filter(w => w.teamId === team.id);
-  const teamProjects = projects.filter(p => (team.projectIds ?? []).includes(p.id));
-  const blockedCount = teamWorkers.reduce((acc, w) => acc + w.blockedTaskCount, 0);
-  const inProgressCount = teamWorkers.reduce((acc, w) => acc + w.inProgressTaskCount, 0);
-  const avgProgress = teamProjects.length
-    ? Math.round(teamProjects.reduce((acc, p) => acc + p.progress, 0) / teamProjects.length)
-    : 0;
-
-  const sampleInitials = teamWorkers.slice(0, 5).map(w => w.avatarInitials);
-
+function TeamCard({ team }: { team: TeamViewModel }) {
   return (
-    <Link href={`/teams/${team.id}`} className="block">
-      <div className="bg-white border border-[#E7E8EC] rounded-xl p-5 shadow-sm hover:border-[#263B80]/30 hover:shadow-md transition-all">
+    <Link href={`/teams/${team.id}`} className="block h-full">
+      <div className="bg-white border border-[#E7E8EC] rounded-xl p-5 shadow-sm hover:border-[#263B80]/30 hover:shadow-md transition-all h-full flex flex-col justify-between">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-[#172033]">{team.name}</div>
-            {leader && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <Avatar initials={leader.avatarInitials} size="xs" />
-                <span className="text-xs text-[#667085]">{leader.name}</span>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className="text-xs text-[#667085]">Lead: —</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-[#F3F4F6] mt-auto">
+          <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center gap-1.5 font-bold text-[#172033]">
+              <Users className="w-3.5 h-3.5 text-[#263B80]" />
+              {team.memberCount}
+              <span className="text-[10px] text-[#9CA3AF] ml-1 font-normal">Members</span>
+            </div>
+            {team.projectIds && team.projectIds.length > 0 && (
+              <div className="text-xs font-medium text-[#667085]">
+                {team.projectIds.length} Project{team.projectIds.length === 1 ? '' : 's'}
               </div>
             )}
           </div>
-          <div className="flex -space-x-1.5">
-            {sampleInitials.map((init, i) => (
-              <Avatar key={i} initials={init} size="xs" className="ring-2 ring-white" />
-            ))}
-            {teamWorkers.length > 5 && (
-              <span className="inline-flex w-6 h-6 items-center justify-center rounded-full bg-[#E5E7EB] text-[10px] font-medium text-[#667085] ring-2 ring-white">
-                +{teamWorkers.length - 5}
-              </span>
-            )}
-          </div>
         </div>
-
-        {/* Progress */}
-        {avgProgress > 0 && (
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-[#667085]">Avg project progress</span>
-              <span className="text-xs font-medium text-[#172033]">{avgProgress}%</span>
-            </div>
-            <Progress value={avgProgress} />
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#F3F4F6]">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-sm font-bold text-[#172033]">
-              <Users className="w-3.5 h-3.5 text-[#263B80]" />
-              {team.memberCount}
-            </div>
-            <div className="text-[10px] text-[#9CA3AF] mt-0.5">Members</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm font-bold text-[#172033]">{inProgressCount}</div>
-            <div className="text-[10px] text-[#9CA3AF] mt-0.5">In Progress</div>
-          </div>
-          <div className="text-center">
-            <div className={`text-sm font-bold ${blockedCount > 0 ? 'text-[#B42318]' : 'text-[#172033]'}`}>{blockedCount}</div>
-            <div className="text-[10px] text-[#9CA3AF] mt-0.5">Blocked</div>
-          </div>
-        </div>
-
-        {teamProjects.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {teamProjects.slice(0, 2).map(p => (
-              <Badge key={p.id} variant="primary" className="text-[10px]">{p.name.split(' ').slice(0, 2).join(' ')}</Badge>
-            ))}
-            {teamProjects.length > 2 && (
-              <Badge variant="default" className="text-[10px]">+{teamProjects.length - 2} more</Badge>
-            )}
-          </div>
-        )}
       </div>
     </Link>
   );
 }
 
-export default async function TeamsPage() {
-  const [teams, leaders, workers, projects] = await Promise.all([
-    getTeams(), getAllTeamLeaders(), getWorkers(), getProjects(),
-  ]);
-
-  const leaderMap = Object.fromEntries(leaders.map(l => [l.teamId, l]));
+export default function TeamsPage() {
+  const { teams, isLoading, error, refetch } = useTeams();
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5">
@@ -111,17 +48,32 @@ export default async function TeamsPage() {
         <p className="text-sm text-[#667085] mt-0.5">View team composition, workload, and project assignments.</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {teams.map(t => (
-          <TeamCard
-            key={t.id}
-            team={t}
-            leader={leaderMap[t.id]}
-            workers={workers}
-            projects={projects}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-[140px]" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="bg-white border border-[#E7E8EC] rounded-xl p-8 text-center shadow-sm max-w-lg mx-auto mt-10">
+          <p className="text-sm text-[#F04438] mb-4">Failed to load teams.</p>
+          <button onClick={refetch} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#263B80] hover:bg-[#1E2E66] rounded-lg transition-colors">
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
+        </div>
+      ) : teams.length === 0 ? (
+        <div className="bg-white border border-[#E7E8EC] rounded-xl p-12 text-center shadow-sm max-w-lg mx-auto mt-10">
+          <Users className="w-10 h-10 text-[#9CA3AF] mx-auto mb-3" />
+          <p className="text-[#172033] font-medium mb-1">No Teams Found</p>
+          <p className="text-sm text-[#667085]">You do not have access to any teams.</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {teams.map(t => (
+            <TeamCard key={t.id} team={t} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { CreateProjectInput } from '@/types';
+import { CreateProjectInput, Supervisor } from '@/types';
 import { createProject } from '@/lib/api/projects';
+import { isApiError } from '@/lib/api/client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter, DialogBody,
@@ -10,20 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input, Textarea, Label, FormField, FormError } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const SUPERVISORS = [
-  { id: 'sup-1', name: 'Amit Sharma' },
-  { id: 'sup-2', name: 'Priya Deshmukh' },
-  { id: 'sup-3', name: 'Rahul Mehta' },
-  { id: 'sup-4', name: 'Neha Kulkarni' },
-  { id: 'sup-5', name: 'Vikram Patil' },
-];
-
 interface Props {
   onClose: () => void;
   onProjectCreated: () => void;
+  supervisors: Supervisor[];
 }
 
-export function CreateProjectDialog({ onClose, onProjectCreated }: Props) {
+export function CreateProjectDialog({ onClose, onProjectCreated, supervisors }: Props) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
@@ -46,7 +40,6 @@ export function CreateProjectDialog({ onClose, onProjectCreated }: Props) {
     if (!form.startDate)         newErrors.startDate  = 'Start date is required';
     if (!form.deadline)          newErrors.deadline   = 'Deadline is required';
     if (!form.priority)          newErrors.priority   = 'Priority is required';
-    if (!form.supervisorId)      newErrors.supervisorId = 'Supervisor is required';
     if (form.startDate && form.deadline && form.deadline < form.startDate)
       newErrors.deadline = 'Deadline cannot be before start date';
     setErrors(newErrors);
@@ -59,11 +52,21 @@ export function CreateProjectDialog({ onClose, onProjectCreated }: Props) {
     setLoading(true);
     setServerError('');
     try {
-      await createProject(form as CreateProjectInput);
+      await createProject({
+        ...form,
+        description: form.description.trim() || null,
+        supervisorId: form.supervisorId || null,
+      } as CreateProjectInput);
       onProjectCreated();
       onClose();
-    } catch {
-      setServerError('Failed to create project. Please try again.');
+    } catch (err) {
+      if (isApiError(err)) {
+        if (err.status === 403) setServerError('You do not have permission to create projects.');
+        else if (err.status === 422) setServerError('Validation error: ' + err.detail);
+        else setServerError(err.detail || 'Failed to create project.');
+      } else {
+        setServerError('Failed to create project. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -154,13 +157,13 @@ export function CreateProjectDialog({ onClose, onProjectCreated }: Props) {
               </FormField>
 
               <FormField>
-                <Label required>Supervisor</Label>
+                <Label>Supervisor</Label>
                 <Select value={form.supervisorId} onValueChange={v => set('supervisorId', v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select supervisor" />
+                    <SelectValue placeholder="Select supervisor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SUPERVISORS.map(s => (
+                    {supervisors.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>

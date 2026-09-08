@@ -11,9 +11,22 @@ import { mockWorkersRepo } from './mock/workers-repository';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
-export async function getWorkers(): Promise<WorkerViewModel[]> {
-  if (USE_MOCK) return mockWorkersRepo.getAll();
-  return apiClient.get<WorkerViewModel[]>('/workers');
+export interface GetWorkersParams {
+  search?: string;
+  team_id?: string;
+  status?: string;
+}
+
+export async function getWorkers(params?: GetWorkersParams): Promise<WorkerViewModel[]> {
+  if (USE_MOCK) return mockWorkersRepo.getAll(); // Mock could be updated later, keep signature compatible
+  
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.team_id) query.append('team_id', params.team_id);
+  if (params?.status) query.append('status', params.status);
+  
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return apiClient.get<WorkerViewModel[]>(`/workers${queryString}`);
 }
 
 export async function getWorkerById(id: string): Promise<WorkerViewModel | null> {

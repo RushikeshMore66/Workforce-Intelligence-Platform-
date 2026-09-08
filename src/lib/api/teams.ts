@@ -5,7 +5,7 @@
  * In API mode: communicates with /api/v1/teams endpoints.
  */
 
-import { TeamViewModel, TeamLeader } from '@/types';
+import { TeamViewModel, TeamLeader, WorkerViewModel } from '@/types';
 import { apiClient } from './client';
 import { mockTeamsRepo } from './mock/teams-repository';
 
@@ -26,9 +26,9 @@ export async function getTeamsBySupervisor(supervisorId: string): Promise<TeamVi
   return apiClient.get<TeamViewModel[]>(`/teams?supervisor_id=${supervisorId}`);
 }
 
-export async function getTeamWorkers(teamId: string): Promise<unknown[]> {
+export async function getTeamWorkers(teamId: string): Promise<WorkerViewModel[]> {
   if (USE_MOCK) return []; // Covered by workers mock
-  return apiClient.get<unknown[]>(`/teams/${teamId}/workers`);
+  return apiClient.get<WorkerViewModel[]>(`/teams/${teamId}/workers`);
 }
 
 /**

@@ -16,9 +16,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/workforce_intelligence"
-
+    DATABASE_URL: str
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

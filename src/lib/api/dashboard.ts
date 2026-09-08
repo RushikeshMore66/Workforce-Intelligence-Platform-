@@ -6,7 +6,7 @@
  * In API mode: communicates with /api/v1/dashboard endpoints.
  */
 
-import { DashboardMetrics, AttentionItem } from '@/types';
+import { DashboardMetrics, AttentionItem, ProjectActivity } from '@/types';
 import { apiClient } from './client';
 import { mockDashboardRepo } from './mock/dashboard-repository';
 
@@ -22,7 +22,7 @@ export async function getAttentionItems(): Promise<AttentionItem[]> {
   return apiClient.get<AttentionItem[]>('/dashboard/attention');
 }
 
-export async function getDashboardActivities(): Promise<unknown[]> {
+export async function getDashboardActivities(): Promise<ProjectActivity[]> {
   if (USE_MOCK) return []; // Covered by activities mock
-  return apiClient.get<unknown[]>('/dashboard/activities');
+  return apiClient.get<ProjectActivity[]>('/dashboard/activities');
 }

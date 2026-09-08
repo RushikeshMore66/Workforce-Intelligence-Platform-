@@ -6,7 +6,7 @@ export interface Project {
   id: string;
   name: string;
   client: string;
-  description: string;
+  description: string | null;
   startDate: string;
   deadline: string;
   priority: ProjectPriority;
@@ -14,27 +14,35 @@ export interface Project {
   status: ProjectStatus;
   health: ProjectHealth;
   progress: number;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface ProjectMetrics {
   teamCount: number;
+  createdAt: string;
 }
 
-export type ProjectViewModel = Project & ProjectMetrics;
+export interface ProjectDetail extends Project {
+  teamIds: string[];
+}
+
+// Alias for backwards compatibility with existing UI if needed, though Project itself now covers it
+export type ProjectViewModel = Project;
 
 export interface CreateProjectInput {
   name: string;
   client: string;
-  description: string;
+  description: string | null;
   startDate: string;
   deadline: string;
   priority: ProjectPriority;
-  supervisorId: string;
+  supervisorId: string | null;
 }
 
-export interface UpdateProjectInput extends Partial<CreateProjectInput> {
+export interface UpdateProjectInput {
+  name?: string;
+  client?: string;
+  description?: string | null;
+  startDate?: string;
+  deadline?: string;
+  priority?: ProjectPriority;
+  supervisorId?: string | null;
   status?: ProjectStatus;
   health?: ProjectHealth;
   progress?: number;

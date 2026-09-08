@@ -69,6 +69,7 @@ class WorkUpdate(Base):
     id = Column(String, primary_key=True, index=True)
     task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     worker_id = Column(String, ForeignKey("workers.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     description = Column(Text, nullable=False)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
@@ -78,4 +79,9 @@ class WorkUpdate(Base):
         "Worker",
         back_populates="work_updates",
         foreign_keys=[worker_id],
+    )
+
+    created_by = relationship(
+        "User",
+        foreign_keys=[created_by_user_id],
     )

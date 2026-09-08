@@ -83,19 +83,17 @@ def add_work_update(
     Workers may only post updates on their own assigned tasks.
     Supervisors and Team Leaders may post on tasks within their scope.
     """
+    from fastapi import HTTPException
     task = authorize_task_access(task_id, current_user, db)
 
-    # For workers specifically, worker_id is their own profile ID (not user ID)
-    worker_id = current_user.id
-    if current_user.role == UserRoleEnum.WORKER:
-        worker = _get_worker_profile(current_user, db)
-        if worker:
-            worker_id = worker.id
+    if not task.assignee_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot post update to an unassigned task")
 
     work_update = WorkUpdate(
         id=f"wu-{uuid.uuid4().hex[:6]}",
         task_id=task_id,
-        worker_id=worker_id,
+        worker_id=task.assignee_id,
+        created_by_user_id=current_user.id,
         description=update_in.description,
     )
     db.add(work_update)

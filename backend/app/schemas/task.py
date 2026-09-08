@@ -34,7 +34,6 @@ class TaskOut(TaskBase):
 
 
 class WorkUpdateCreate(BaseSchema):
-    task_id: str
     description: str
 
 
@@ -42,5 +41,6 @@ class WorkUpdateOut(BaseSchema):
     id: str
     task_id: str
     worker_id: str
+    created_by_user_id: Optional[str] = None
     description: str
     timestamp: datetime

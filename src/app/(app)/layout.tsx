@@ -1,6 +1,7 @@
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,7 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Topbar />
           <main className="flex-1 overflow-y-auto p-5 md:p-7">
-            {children}
+            <RoleGuard>
+              {children}
+            </RoleGuard>
           </main>
         </div>
       </div>

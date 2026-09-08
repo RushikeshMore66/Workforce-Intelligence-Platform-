@@ -46,37 +46,43 @@ export function ProjectHealthTable({ projects, supervisors }: Props) {
       </div>
 
       <div className="divide-y divide-[#F3F4F6]">
-        {topProjects.map(proj => {
-          const sup = proj.supervisorId ? supMap[proj.supervisorId] : undefined;
-          const daysLeft = Math.ceil(
-            (new Date(proj.deadline).getTime() - new Date().getTime()) / 86400000
-          );
-          return (
-            <div key={proj.id} className="px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <Link href={`/projects/${proj.id}`} className="text-sm font-medium text-[#172033] hover:text-[#263B80] truncate block transition-colors">
-                    {proj.name}
-                  </Link>
-                  <div className="text-xs text-[#667085] mt-0.5">{proj.client}</div>
-                </div>
-                <div className="hidden md:flex items-center gap-1 text-xs text-[#667085] min-w-[100px]">
-                  {sup?.name ?? '—'}
-                </div>
-                <div className="flex items-center gap-2 min-w-[120px]">
-                  <Progress value={proj.progress} className="flex-1" />
-                  <span className="text-xs text-[#667085] font-medium w-8 text-right">{proj.progress}%</span>
-                </div>
-                <div className="hidden sm:block min-w-[72px] text-right">
-                  <HealthDot health={proj.health} />
-                </div>
-                <div className={`text-xs font-medium min-w-[64px] text-right ${daysLeft < 30 ? 'text-[#B54708]' : 'text-[#667085]'}`}>
-                  {daysLeft > 0 ? `${daysLeft}d` : 'Overdue'}
+        {topProjects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <p className="text-sm text-[#667085]">No active projects found.</p>
+          </div>
+        ) : (
+          topProjects.map(proj => {
+            const sup = proj.supervisorId ? supMap[proj.supervisorId] : undefined;
+            const daysLeft = Math.ceil(
+              (new Date(proj.deadline).getTime() - new Date().getTime()) / 86400000
+            );
+            return (
+              <div key={proj.id} className="px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/projects/${proj.id}`} className="text-sm font-medium text-[#172033] hover:text-[#263B80] truncate block transition-colors">
+                      {proj.name}
+                    </Link>
+                    <div className="text-xs text-[#667085] mt-0.5">{proj.client}</div>
+                  </div>
+                  <div className="hidden md:flex items-center gap-1 text-xs text-[#667085] min-w-[100px]">
+                    {sup?.name ?? '—'}
+                  </div>
+                  <div className="flex items-center gap-2 min-w-[120px]">
+                    <Progress value={proj.progress} className="flex-1" />
+                    <span className="text-xs text-[#667085] font-medium w-8 text-right">{proj.progress}%</span>
+                  </div>
+                  <div className="hidden sm:block min-w-[72px] text-right">
+                    <HealthDot health={proj.health} />
+                  </div>
+                  <div className={`text-xs font-medium min-w-[64px] text-right ${daysLeft < 30 ? 'text-[#B54708]' : 'text-[#667085]'}`}>
+                    {daysLeft > 0 ? `${daysLeft}d` : 'Overdue'}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

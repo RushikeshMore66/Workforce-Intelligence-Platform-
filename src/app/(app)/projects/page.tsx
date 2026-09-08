@@ -1,42 +1,36 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { Project, Supervisor } from '@/types';
-import { getProjects } from '@/lib/api/projects';
-import { getSupervisors } from '@/lib/api/supervisors';
+import { useState } from 'react';
+import { useAuth } from '@/lib/auth/useAuth';
+import { useProjects } from './useProjects';
 import { ProjectTable } from '@/components/projects/ProjectTable';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SkeletonTable } from '@/components/ui/skeleton';
-import { Plus, Search } from 'lucide-react';
-
-export const dynamic = 'force-dynamic';
+import { Plus, Search, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [toast, setToast] = useState('');
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [healthFilter, setHealthFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [p, s] = await Promise.all([getProjects(), getSupervisors()]);
-    setProjects(p);
-    setSupervisors(s);
-    setLoading(false);
-  }, []);
+  const { projects, supervisors, isLoading, error, refetch } = useProjects({
+    search: search || undefined,
+    status: statusFilter || undefined,
+    health: healthFilter || undefined,
+    priority: priorityFilter || undefined,
+  });
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadData(); }, [loadData]);
+  const canCreate = user?.role === 'OWNER' || user?.role === 'SUPERVISOR';
 
   const handleProjectCreated = () => {
-    loadData();
+    refetch();
     setToast('Project created successfully!');
     setTimeout(() => setToast(''), 3500);
   };
@@ -57,10 +51,12 @@ export default function ProjectsPage() {
           <h1 className="wi-page-title">Projects</h1>
           <p className="text-sm text-[#667085] mt-0.5">Manage projects, monitor progress, and understand project health.</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="w-4 h-4" />
-          Create Project
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="w-4 h-4" />
+            Create Project
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -114,9 +110,30 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      {loading ? (
+      {/* Content */}
+      {isLoading ? (
         <SkeletonTable rows={6} cols={7} />
+      ) : error ? (
+        <div className="bg-white border border-[#E7E8EC] rounded-xl p-12 text-center shadow-sm">
+          <AlertTriangle className="w-8 h-8 text-[#F04438] mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-[#172033]">Failed to load projects</h3>
+          <p className="text-sm text-[#667085] mt-1 mb-4">There was a problem communicating with the server.</p>
+          <Button variant="outline" onClick={refetch}>
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="bg-white border border-[#E7E8EC] rounded-xl p-12 text-center shadow-sm">
+          <div className="w-12 h-12 bg-[#F9FAFB] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E7E8EC]">
+            <Search className="w-6 h-6 text-[#9CA3AF]" />
+          </div>
+          <h3 className="text-base font-semibold text-[#172033]">No projects found</h3>
+          <p className="text-sm text-[#667085] mt-1 max-w-sm mx-auto">
+            {search || statusFilter || healthFilter || priorityFilter
+              ? "No projects match your current filters. Try adjusting them."
+              : "There are no projects available in your workspace."}
+          </p>
+        </div>
       ) : (
         <ProjectTable
           projects={projects}
@@ -132,6 +149,7 @@ export default function ProjectsPage() {
         <CreateProjectDialog
           onClose={() => setIsCreateOpen(false)}
           onProjectCreated={handleProjectCreated}
+          supervisors={supervisors}
         />
       )}
     </div>

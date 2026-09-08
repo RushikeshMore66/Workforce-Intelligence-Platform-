@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/useAuth';
+import { canAccessSection } from '@/lib/auth/rbac';
 import { Avatar } from '@/components/ui/avatar';
 import { useState } from 'react';
 
@@ -82,37 +83,46 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            {!collapsed && (
-              <div className="px-2 mb-1.5 text-[10px] font-semibold text-[#475569] uppercase tracking-widest">
-                {group.label}
+        {NAV_GROUPS.map(group => {
+          // Filter items based on user's role
+          const visibleItems = group.items.filter(item => 
+            canAccessSection(currentUser?.role, item.href)
+          );
+
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={group.label}>
+              {!collapsed && (
+                <div className="px-2 mb-1.5 text-[10px] font-semibold text-[#475569] uppercase tracking-widest">
+                  {group.label}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map(item => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onMobileClose}
+                      title={collapsed ? item.label : undefined}
+                      className={cn(
+                        'wi-nav-link',
+                        collapsed && 'justify-center px-0 w-full',
+                        active && 'wi-nav-link-active'
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      {!collapsed && <span>{item.label}</span>}
+                    </Link>
+                  );
+                })}
               </div>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map(item => {
-                const active = isActive(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onMobileClose}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      'wi-nav-link',
-                      collapsed && 'justify-center px-0 w-full',
-                      active && 'wi-nav-link-active'
-                    )}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
-                );
-              })}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Collapse toggle */}
