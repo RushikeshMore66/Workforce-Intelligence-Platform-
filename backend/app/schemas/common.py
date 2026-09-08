@@ -58,3 +58,16 @@ class NotificationType(str, enum.Enum):
 
 class BaseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+from typing import TypeVar, Generic, List
+
+T = TypeVar('T')
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T]
+    page: int
+    page_size: int
+    total: int
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

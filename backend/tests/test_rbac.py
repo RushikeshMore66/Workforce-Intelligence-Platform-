@@ -1,11 +1,14 @@
 import hashlib
 import pytest
+from datetime import date, datetime
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.main import app
 from app.database import Base, get_db
 from app.models.user import User, UserRoleEnum, Supervisor, TeamLeader, Worker
 from app.models.team import Team
+from app.models.project import Project, ProjectPriorityEnum
+from app.models.task import Task, TaskStatusEnum, WorkUpdate
 from app.models.notification import Notification
 from app.auth.jwt import create_jwt_token
 from app.core.security import get_password_hash
@@ -118,6 +121,54 @@ def rbac_db():
         read=False,
     )
     db.add(notif)
+    
+    # Project and Task for worker
+    project = Project(
+        id="proj-worker-1",
+        name="Worker Project",
+        client="Test Client",
+        start_date=date.today(),
+        deadline=date.today(),
+        priority=ProjectPriorityEnum.MEDIUM,
+        supervisor_id="sup-profile-1",
+    )
+    # Assign team to project
+    project.teams.append(team)
+    db.add(project)
+    
+    task1 = Task(
+        id="task-worker-1",
+        project_id="proj-worker-1",
+        title="Task 1",
+        assignee_id="worker-profile-1",
+        team_id="team-rbac-1",
+        status=TaskStatusEnum.TODO,
+        priority=ProjectPriorityEnum.MEDIUM,
+        due_date=date.today()
+    )
+    db.add(task1)
+    
+    task2 = Task(
+        id="task-worker-2",
+        project_id="proj-worker-1",
+        title="Task 2",
+        assignee_id="worker-profile-2", # Other worker
+        team_id=None,
+        status=TaskStatusEnum.TODO,
+        priority=ProjectPriorityEnum.MEDIUM,
+        due_date=date.today()
+    )
+    db.add(task2)
+    
+    update1 = WorkUpdate(
+        id="update-worker-1",
+        task_id="task-worker-1",
+        worker_id="worker-profile-1",
+        created_by_user_id="rbac-worker",
+        description="Did some work",
+        timestamp=datetime.utcnow()
+    )
+    db.add(update1)
 
     db.commit()
     db.close()
@@ -377,3 +428,64 @@ class TestPublicEndpoints:
             json={"email": "nobody@example.com", "password": "wrong"},
         )
         assert resp.status_code == 401
+class TestWorkerWorkHistory:
+    def test_worker_can_access_own_tasks(self, rbac_client):
+        token = make_token("rbac-worker", "WORKER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == "task-worker-1"
+
+    def test_worker_cannot_access_other_worker_tasks(self, rbac_client):
+        token = make_token("rbac-worker", "WORKER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-2/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 403
+        
+    def test_team_leader_can_access_authorized_team_worker_tasks(self, rbac_client):
+        token = make_token("rbac-leader", "TEAM_LEADER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_supervisor_can_access_authorized_worker_tasks(self, rbac_client):
+        token = make_token("rbac-sup", "SUPERVISOR")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_owner_can_access_any_worker_tasks(self, rbac_client):
+        token = make_token("rbac-owner", "OWNER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-2/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_nonexistent_worker_returns_404(self, rbac_client):
+        token = make_token("rbac-owner", "OWNER")
+        resp = rbac_client.get("/api/v1/workers/nonexistent/tasks", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 404
+        
+    def test_worker_can_access_own_updates(self, rbac_client):
+        token = make_token("rbac-worker", "WORKER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/updates", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == "update-worker-1"
+
+    def test_worker_cannot_access_other_worker_updates(self, rbac_client):
+        token = make_token("rbac-worker", "WORKER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-2/updates", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 403
+        
+    def test_team_leader_can_access_authorized_worker_updates(self, rbac_client):
+        token = make_token("rbac-leader", "TEAM_LEADER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/updates", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_supervisor_can_access_authorized_worker_updates(self, rbac_client):
+        token = make_token("rbac-sup", "SUPERVISOR")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-1/updates", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_owner_can_access_any_worker_updates(self, rbac_client):
+        token = make_token("rbac-owner", "OWNER")
+        resp = rbac_client.get("/api/v1/workers/worker-profile-2/updates", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
