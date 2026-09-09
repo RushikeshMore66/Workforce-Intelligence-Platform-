@@ -5,7 +5,9 @@ from app.database import get_db
 from app.schemas.user import WorkerOut
 from app.schemas.common import WorkerStatus, PaginatedResponse
 from app.schemas.task import TaskOut, WorkUpdateOut
+from app.schemas.analytics import WorkerAnalyticsOut
 from app.services.worker_service import WorkerService
+from app.services.worker_analytics_service import WorkerAnalyticsService
 from app.models.user import User, UserRoleEnum
 from app.models.task import Task, WorkUpdate
 from app.auth.dependencies import (
@@ -137,3 +139,16 @@ def get_worker_updates(
         page_size=page_size,
         total=total
     )
+
+
+@router.get("/{worker_id}/analytics", response_model=WorkerAnalyticsOut)
+def get_worker_analytics_data(
+    worker_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get deterministic analytics data for a specific worker."""
+    authorize_worker_access(worker_id, current_user, db)
+    
+    service = WorkerAnalyticsService(db)
+    return service.get_worker_analytics(worker_id)
