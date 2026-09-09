@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, WorkUpdateCreate, WorkUpdateOut
-from app.models.task import Task, WorkUpdate
+from app.models.task import Task, WorkUpdate, TaskTransition
 from app.models.activity import ProjectActivity, ActivityTypeEnum
 from app.models.user import User, UserRoleEnum
 from app.repositories.task_repo import TaskRepository
@@ -51,10 +51,37 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ):
     """Update a task. Workers may only update their own assigned tasks."""
-    task = authorize_task_access(task_id, current_user, db)
+    # Read the task to perform authorization checks
+    authorize_task_access(task_id, current_user, db)
 
-    repo = TaskRepository(db)
-    updated = repo.update(task, task_in.model_dump(exclude_unset=True))
+    update_data = task_in.model_dump(exclude_unset=True)
+
+    # Lock the task row exclusively if status might be changing to prevent transition history races
+    if "status" in update_data:
+        task = db.query(Task).with_for_update().filter(Task.id == task_id).first()
+    else:
+        task = db.query(Task).filter(Task.id == task_id).first()
+
+    old_status = task.status
+    new_status = update_data.get("status")
+
+    transition = None
+    if new_status and new_status != old_status:
+        transition = TaskTransition(
+            id=f"tt-{uuid.uuid4().hex[:6]}",
+            task_id=task.id,
+            from_status=old_status,
+            to_status=new_status,
+            changed_by_user_id=current_user.id
+        )
+
+    # Apply changes
+    for field, value in update_data.items():
+        setattr(task, field, value)
+        
+    db.add(task)
+    if transition:
+        db.add(transition)
 
     # Log task activity
     activity = ProjectActivity(
@@ -65,10 +92,17 @@ def update_task(
         user_name=current_user.name,
         type=ActivityTypeEnum.TASK_UPDATED,
     )
+    if new_status and new_status != old_status:
+        if new_status == "COMPLETED":
+            activity.type = ActivityTypeEnum.TASK_COMPLETED
+        else:
+            activity.type = ActivityTypeEnum.TASK_STATUS_CHANGED
+
     db.add(activity)
     db.commit()
+    db.refresh(task)
 
-    return updated
+    return task
 
 
 @router.post("/{task_id}/updates", response_model=WorkUpdateOut, status_code=status.HTTP_201_CREATED)

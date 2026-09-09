@@ -18,12 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('work_updates', sa.Column('created_by_user_id', sa.String(), nullable=True))
-    op.create_index(op.f('ix_work_updates_created_by_user_id'), 'work_updates', ['created_by_user_id'], unique=False)
-    op.create_foreign_key('fk_work_updates_created_by_user_id', 'work_updates', 'users', ['created_by_user_id'], ['id'], ondelete='SET NULL')
+    with op.batch_alter_table('work_updates', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('created_by_user_id', sa.String(), nullable=True))
+        batch_op.create_index(batch_op.f('ix_work_updates_created_by_user_id'), ['created_by_user_id'], unique=False)
+        batch_op.create_foreign_key('fk_work_updates_created_by_user_id', 'users', ['created_by_user_id'], ['id'], ondelete='SET NULL')
 
 
 def downgrade() -> None:
-    op.drop_constraint('fk_work_updates_created_by_user_id', 'work_updates', type_='foreignkey')
-    op.drop_index(op.f('ix_work_updates_created_by_user_id'), table_name='work_updates')
-    op.drop_column('work_updates', 'created_by_user_id')
+    with op.batch_alter_table('work_updates', schema=None) as batch_op:
+        batch_op.drop_constraint('fk_work_updates_created_by_user_id', type_='foreignkey')
+        batch_op.drop_index(batch_op.f('ix_work_updates_created_by_user_id'))
+        batch_op.drop_column('created_by_user_id')

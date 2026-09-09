@@ -96,3 +96,117 @@ def test_unassigned_task_bad_request(client, test_data):
     resp = client.post(f"/api/v1/tasks/{test_data['task_unassigned'].id}/updates", json={"description": "unassigned update"}, headers=headers)
     assert resp.status_code == 400
     assert "unassigned" in resp.json()["detail"].lower()
+from app.models.task import TaskTransition
+
+def test_task_status_transition_todo_to_in_progress(client, test_data, db_session):
+    headers = get_auth_headers(test_data["worker_user"].id, UserRoleEnum.WORKER.value)
+    
+    # 1. TODO -> IN_PROGRESS
+    resp = client.patch(
+        f"/api/v1/tasks/{test_data['task1'].id}",
+        json={"status": "IN_PROGRESS"},
+        headers=headers
+    )
+    assert resp.status_code == 200
+    
+    # Verify exactly one transition
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == test_data['task1'].id).all()
+    assert len(transitions) == 1
+    t = transitions[0]
+    assert t.from_status == TaskStatusEnum.TODO
+    assert t.to_status == TaskStatusEnum.IN_PROGRESS
+    assert t.changed_by_user_id == test_data["worker_user"].id
+
+
+def test_task_status_unchanged_creates_no_transition(client, test_data, db_session):
+    headers = get_auth_headers(test_data["worker_user"].id, UserRoleEnum.WORKER.value)
+    
+    # Ensure starting status is TODO
+    task = test_data['task1']
+    task.status = TaskStatusEnum.TODO
+    db_session.commit()
+    
+    resp = client.patch(
+        f"/api/v1/tasks/{task.id}",
+        json={"status": "TODO", "title": "Updated Title"},
+        headers=headers
+    )
+    assert resp.status_code == 200
+    
+    # Verify no transitions created
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == task.id).all()
+    assert len(transitions) == 0
+
+
+def test_sequential_status_transitions(client, test_data, db_session):
+    headers = get_auth_headers(test_data["worker_user"].id, UserRoleEnum.WORKER.value)
+    task_id = test_data['task1'].id
+    
+    # TODO -> IN_PROGRESS
+    client.patch(f"/api/v1/tasks/{task_id}", json={"status": "IN_PROGRESS"}, headers=headers)
+    # IN_PROGRESS -> BLOCKED
+    client.patch(f"/api/v1/tasks/{task_id}", json={"status": "BLOCKED"}, headers=headers)
+    # BLOCKED -> IN_PROGRESS
+    client.patch(f"/api/v1/tasks/{task_id}", json={"status": "IN_PROGRESS"}, headers=headers)
+    # IN_PROGRESS -> COMPLETED
+    client.patch(f"/api/v1/tasks/{task_id}", json={"status": "COMPLETED"}, headers=headers)
+    
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == task_id).order_by(TaskTransition.timestamp.asc()).all()
+    assert len(transitions) == 4
+    
+    assert transitions[0].from_status == TaskStatusEnum.TODO
+    assert transitions[0].to_status == TaskStatusEnum.IN_PROGRESS
+    
+    assert transitions[1].from_status == TaskStatusEnum.IN_PROGRESS
+    assert transitions[1].to_status == TaskStatusEnum.BLOCKED
+    
+    assert transitions[2].from_status == TaskStatusEnum.BLOCKED
+    assert transitions[2].to_status == TaskStatusEnum.IN_PROGRESS
+    
+    assert transitions[3].from_status == TaskStatusEnum.IN_PROGRESS
+    assert transitions[3].to_status == TaskStatusEnum.COMPLETED
+
+
+def test_unauthorized_user_cannot_create_transition(client, test_data, db_session):
+    headers = get_auth_headers(test_data["rogue_sup"].id, UserRoleEnum.SUPERVISOR.value)
+    task_id = test_data['task1'].id
+    
+    resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "IN_PROGRESS"}, headers=headers)
+    assert resp.status_code == 403
+    
+    # Verify no transition
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == task_id).all()
+    assert len(transitions) == 0
+
+
+def test_client_cannot_spoof_changed_by_user_id(client, test_data, db_session):
+    headers = get_auth_headers(test_data["worker_user"].id, UserRoleEnum.WORKER.value)
+    task_id = test_data['task1'].id
+    
+    resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "IN_PROGRESS", "changed_by_user_id": "some-other-id"}, headers=headers)
+    assert resp.status_code == 200
+    
+    # Verify transition has the authenticated user, not the spoofed one
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == task_id).all()
+    assert len(transitions) == 1
+    assert transitions[0].changed_by_user_id == test_data["worker_user"].id
+
+
+def test_task_deletion_cascades_transitions(client, test_data, db_session):
+    headers = get_auth_headers(test_data["worker_user"].id, UserRoleEnum.WORKER.value)
+    task_id = test_data['task1'].id
+    
+    # Create transition
+    client.patch(f"/api/v1/tasks/{task_id}", json={"status": "IN_PROGRESS"}, headers=headers)
+    
+    transitions = db_session.query(TaskTransition).filter(TaskTransition.task_id == task_id).all()
+    assert len(transitions) == 1
+    
+    # Delete task directly from db to test cascade
+    task = db_session.query(Task).filter(Task.id == task_id).first()
+    db_session.delete(task)
+    db_session.commit()
+    
+    # Verify transitions are deleted
+    transitions_after = db_session.query(TaskTransition).filter(TaskTransition.task_id == task_id).all()
+    assert len(transitions_after) == 0

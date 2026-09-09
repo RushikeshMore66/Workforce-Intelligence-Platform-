@@ -57,6 +57,13 @@ class Task(Base):
         order_by="WorkUpdate.timestamp.desc()",
     )
 
+    transitions = relationship(
+        "TaskTransition",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="TaskTransition.timestamp.asc()",
+    )
+
     blockers = relationship(
         "Blocker",
         back_populates="task",
@@ -84,4 +91,22 @@ class WorkUpdate(Base):
     created_by = relationship(
         "User",
         foreign_keys=[created_by_user_id],
+    )
+
+
+class TaskTransition(Base):
+    __tablename__ = "task_transitions"
+
+    id = Column(String, primary_key=True, index=True)
+    task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=True)
+    to_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=False)
+    changed_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    task = relationship("Task", back_populates="transitions")
+
+    changed_by = relationship(
+        "User",
+        foreign_keys=[changed_by_user_id],
     )
