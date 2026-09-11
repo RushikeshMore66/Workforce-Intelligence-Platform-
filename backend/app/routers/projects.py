@@ -6,8 +6,10 @@ from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
 from app.schemas.task import TaskOut
 from app.schemas.blocker import BlockerOut
 from app.schemas.activity import ActivityOut
+from app.schemas.analytics import ProjectAnalyticsOut
 from app.schemas.common import ProjectStatus, ProjectHealth, ProjectPriority
 from app.services.project_service import ProjectService
+from app.services.project_analytics_service import ProjectAnalyticsService
 from app.repositories.task_repo import TaskRepository
 from app.repositories.blocker_repo import BlockerRepository
 from app.models.activity import ProjectActivity
@@ -141,3 +143,16 @@ def get_project_activities(
         .order_by(ProjectActivity.timestamp.desc())
         .all()
     )
+
+
+@router.get("/{project_id}/analytics", response_model=ProjectAnalyticsOut)
+def get_project_analytics_data(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get deterministic analytics data for a specific project."""
+    authorize_project_access(project_id, current_user, db)
+    
+    service = ProjectAnalyticsService(db)
+    return service.get_project_analytics(project_id)

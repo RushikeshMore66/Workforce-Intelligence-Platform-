@@ -9,10 +9,13 @@ from app.schemas.user import WorkerOut
 from app.models.user import User, UserRoleEnum
 from app.auth.dependencies import (
     get_current_user,
+    authorize_team_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
     _get_worker_profile,
 )
+from app.schemas.analytics import TeamAnalyticsOut
+from app.services.team_analytics_service import TeamAnalyticsService
 from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
@@ -95,31 +98,8 @@ def get_team(
     current_user: User = Depends(get_current_user),
 ):
     """Fetch a single team. Raises 403 if the user is not authorized to see it."""
-    service = TeamService(db)
-    t = service.get_team(team_id)
-
-    if current_user.role == UserRoleEnum.OWNER:
-        return _format_team(t)
-
-    if current_user.role == UserRoleEnum.SUPERVISOR:
-        sup = _get_supervisor_profile(current_user, db)
-        if sup and any(team.id == team_id for team in sup.teams):
-            return _format_team(t)
-        raise PermissionDeniedException("You are not authorized to access this team.")
-
-    if current_user.role == UserRoleEnum.TEAM_LEADER:
-        leader = _get_team_leader_profile(current_user, db)
-        if leader and leader.team_id == team_id:
-            return _format_team(t)
-        raise PermissionDeniedException("You are not authorized to access this team.")
-
-    if current_user.role == UserRoleEnum.WORKER:
-        worker = _get_worker_profile(current_user, db)
-        if worker and worker.team_id == team_id:
-            return _format_team(t)
-        raise PermissionDeniedException("You are not authorized to access this team.")
-
-    raise PermissionDeniedException("Access denied.")
+    t = authorize_team_access(team_id, current_user, db)
+    return _format_team(t)
 
 
 @router.get("/{team_id}/workers", response_model=List[WorkerOut])
@@ -129,9 +109,21 @@ def get_team_workers(
     current_user: User = Depends(get_current_user),
 ):
     """List workers in a team. User must be authorized to see the team."""
-    # Reuse team access check (will raise 403 if not allowed)
-    get_team(team_id, db, current_user)
+    authorize_team_access(team_id, current_user, db)
 
     repo = WorkerRepository(db)
     workers = repo.get_by_team(team_id)
     return [_format_worker(w) for w in workers]
+
+
+@router.get("/{team_id}/analytics", response_model=TeamAnalyticsOut)
+def get_team_analytics_data(
+    team_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get deterministic analytics data for a specific team."""
+    authorize_team_access(team_id, current_user, db)
+    
+    service = TeamAnalyticsService(db)
+    return service.get_team_analytics(team_id)

@@ -193,6 +193,46 @@ def authorize_worker_access(worker_id: str, user: User, db: Session) -> Worker:
     raise PermissionDeniedException("Access denied.")
 
 
+def authorize_team_access(team_id: str, user: User, db: Session):
+    """Verify that the current user may access the given team.
+
+    OWNER      → any team.
+    SUPERVISOR → only their assigned teams.
+    TEAM_LEADER→ only their own team.
+    WORKER     → only their own team.
+
+    Raises 404 if the team does not exist, 403 if unauthorized.
+    """
+    from app.models.team import Team
+
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise EntityNotFoundException("Team", team_id)
+
+    if user.role == UserRoleEnum.OWNER:
+        return team
+
+    if user.role == UserRoleEnum.SUPERVISOR:
+        sup = _get_supervisor_profile(user, db)
+        if sup and any(t.id == team_id for t in sup.teams):
+            return team
+        raise PermissionDeniedException("You are not authorized to access this team.")
+
+    if user.role == UserRoleEnum.TEAM_LEADER:
+        leader = _get_team_leader_profile(user, db)
+        if leader and leader.team_id == team_id:
+            return team
+        raise PermissionDeniedException("You are not authorized to access this team.")
+
+    if user.role == UserRoleEnum.WORKER:
+        worker = _get_worker_profile(user, db)
+        if worker and worker.team_id == team_id:
+            return team
+        raise PermissionDeniedException("You are not authorized to access this team.")
+
+    raise PermissionDeniedException("Access denied.")
+
+
 def authorize_task_access(task_id: str, user: User, db: Session):
     """Verify that the current user may access or modify the given task.
 
