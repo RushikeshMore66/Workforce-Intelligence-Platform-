@@ -12,6 +12,7 @@ from app.routers import (
     dashboard_router,
     notifications_router,
     projects_router,
+    report_schedules_router,
     reports_router,
     supervisors_router,
     tasks_router,
@@ -125,6 +126,7 @@ app.include_router(blockers_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(reports_router, prefix=settings.API_V1_STR)
+app.include_router(report_schedules_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", include_in_schema=False)

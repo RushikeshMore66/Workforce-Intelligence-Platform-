@@ -5,6 +5,8 @@ from app.models.task import Task, WorkUpdate, TaskStatusEnum
 from app.models.blocker import Blocker, BlockerStatusEnum
 from app.models.activity import ProjectActivity, ActivityTypeEnum
 from app.models.notification import Notification, NotificationTypeEnum, NotificationPriorityEnum
+from app.models.report_schedule import ReportSchedule, ReportTypeEnum, ReportFormatEnum, ReportFrequencyEnum
+from app.models.report_run import ReportRun, ReportRunStatusEnum
 
 __all__ = [
     "User",
@@ -29,4 +31,10 @@ __all__ = [
     "Notification",
     "NotificationTypeEnum",
     "NotificationPriorityEnum",
+    "ReportSchedule",
+    "ReportTypeEnum",
+    "ReportFormatEnum",
+    "ReportFrequencyEnum",
+    "ReportRun",
+    "ReportRunStatusEnum",
 ]
