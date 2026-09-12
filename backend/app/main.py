@@ -27,6 +27,9 @@ from app.core.exceptions import (
 )
 
 
+from app.scheduler.scheduler import start as scheduler_start
+from app.scheduler.scheduler import shutdown as scheduler_shutdown
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle hooks.
@@ -34,8 +37,21 @@ async def lifespan(app: FastAPI):
     Database schema creation and application-data seeding are intentionally not
     performed here. Alembic owns schema changes, while authenticated/admin
     bootstrap tooling should own initial user creation.
+    
+    Development:
+    REPORT_SCHEDULER_ENABLED=true may be used with one Uvicorn worker.
+
+    Production:
+    Keep REPORT_SCHEDULER_ENABLED=false in API workers.
+    Run python -m app.scheduler.worker as one dedicated scheduler process.
     """
+    if settings.REPORT_SCHEDULER_ENABLED:
+        scheduler_start()
+        
     yield
+    
+    if settings.REPORT_SCHEDULER_ENABLED:
+        scheduler_shutdown()
 
 
 app = FastAPI(

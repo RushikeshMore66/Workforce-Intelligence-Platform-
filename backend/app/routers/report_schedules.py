@@ -126,3 +126,86 @@ def get_run(
     _: User = Depends(require_owner),
 ):
     return ReportRunService(db).get_run(run_id)
+
+
+@router.post(
+    "/schedules/{schedule_id}/run-now",
+    response_model=ReportRunOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def run_now(
+    schedule_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_owner),
+):
+    schedule = ReportScheduleService(db).get_schedule(schedule_id)
+    from fastapi import HTTPException
+    
+    if not schedule.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot manually run a paused or inactive schedule",
+        )
+    
+    from app.services.report_execution_service import ReportExecutionService
+    return ReportExecutionService(db).execute_manual(schedule)
+
+
+@router.get(
+    "/runs/{run_id}/download",
+)
+def download_run(
+    run_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_owner),
+):
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from app.models.report_run import ReportRunStatusEnum
+    from app.services.report_storage_service import ReportStorageService
+
+    run = ReportRunService(db).get_run(run_id)
+
+    if run.status != ReportRunStatusEnum.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot download report in status: {run.status}",
+        )
+
+    if not run.output_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report output file not found",
+        )
+
+    from app.config import settings
+
+    try:
+        storage_service = ReportStorageService(settings.REPORT_STORAGE_PATH)
+        # If run.output_path is relative, it should be resolved relative to storage_root.
+        # But wait, resolve_safe currently takes the path as is.
+        # Let's construct the absolute path first or let resolve_safe handle it if it expects an absolute path.
+        # Ah, resolve_safe is implemented as Path(path).resolve().relative_to(self.storage_root).
+        # We need to construct the full path first: self.storage_root / run.output_path
+        
+        full_path = storage_service.storage_root / run.output_path
+        resolved_path = storage_service.resolve_safe(full_path)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report output file not found",
+        )
+
+    if not resolved_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report output file not found",
+        )
+
+    filename = run.output_filename or resolved_path.name
+
+    return FileResponse(
+        path=resolved_path,
+        filename=filename,
+        content_disposition_type="attachment",
+    )
