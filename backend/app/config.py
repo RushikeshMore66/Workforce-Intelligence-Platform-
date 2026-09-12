@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     DATABASE_URL: str
+    
+    # Report Scheduler
+    REPORT_SCHEDULER_ENABLED: bool = False
+    REPORT_SCHEDULER_INTERVAL_SECONDS: int = 60
+    REPORT_STORAGE_PATH: str = "./storage/reports"
+    REPORT_STALE_RUN_TIMEOUT_MINUTES: int = 60
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

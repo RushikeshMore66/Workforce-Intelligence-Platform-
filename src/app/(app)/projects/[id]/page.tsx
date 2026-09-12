@@ -20,6 +20,9 @@ import { AccessDenied } from '@/components/auth/AccessDenied';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
+import { getProjectAnalytics } from '@/lib/api/analytics';
+import { ProjectAnalyticsResponse } from '@/types/analytics';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 // ── Task Status Badge ──
 function TaskStatusBadge({ status }: { status: Task['status'] }) {
@@ -68,12 +71,32 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const { id } = React.use(params);
   const { project, tasks, blockers, activities, fetchProject, fetchTasks, fetchBlockers, fetchActivities } = useProjectDetail(id);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  const [analyticsData, setAnalyticsData] = useState<ProjectAnalyticsResponse | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  const fetchAnalytics = React.useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const data = await getProjectAnalytics(id);
+      setAnalyticsData(data);
+    } catch (err) {
+      if (isApiError(err)) setAnalyticsError(err.detail);
+      else setAnalyticsError('Failed to load analytics');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (activeTab === 'tasks') fetchTasks();
     if (activeTab === 'blockers') fetchBlockers();
     if (activeTab === 'activity') fetchActivities();
-  }, [activeTab, fetchTasks, fetchBlockers, fetchActivities]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeTab === 'analytics') fetchAnalytics();
+  }, [activeTab, fetchTasks, fetchBlockers, fetchActivities, fetchAnalytics]);
 
   if (project.isLoading && !project.hasFetched) {
     return (
@@ -216,6 +239,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -363,6 +387,85 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </TabsContent>
+          {/* Analytics */}
+          <TabsContent value="analytics" className="p-6 space-y-6">
+            {analyticsLoading ? (
+              <div className="grid sm:grid-cols-2 gap-4"><SkeletonCard className="h-32" /><SkeletonCard className="h-32" /></div>
+            ) : analyticsError ? (
+              <div className="p-8 text-center text-sm text-[#F04438]">
+                {analyticsError}
+                <div className="mt-2"><Button variant="outline" size="sm" onClick={fetchAnalytics}>Retry</Button></div>
+              </div>
+            ) : !analyticsData ? null : (
+              <div className="space-y-6">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                    <div className="text-xs text-[#667085] mb-1">Official Workforce (Team Members)</div>
+                    <div className="text-xl font-bold text-[#172033]">{analyticsData.workforce.teamWorkforceCount ?? analyticsData.workforce.totalWorkers ?? 0}</div>
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                    <div className="text-xs text-[#667085] mb-1">Workers with Assigned Tasks</div>
+                    <div className="text-xl font-bold text-[#172033]">{analyticsData.workforce.workersWithTasks ?? 0}</div>
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                    <div className="text-xs text-[#667085] mb-1">Total Tasks</div>
+                    <div className="text-xl font-bold text-[#172033]">{analyticsData.workload.totalTasks ?? analyticsData.workload.total ?? 0}</div>
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                    <div className="text-xs text-[#667085] mb-1">Completion Rate</div>
+                    <div className="text-xl font-bold text-[#172033]">{(analyticsData.delivery.completionRate * 100).toFixed(1)}%</div>
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Workload */}
+                  <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                    <h3 className="text-sm font-semibold mb-4">Task Workload</h3>
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={[
+                          { name: 'To Do', value: analyticsData.workload.todo, fill: '#E5E7EB' },
+                          { name: 'In Progress', value: analyticsData.workload.inProgress, fill: '#263B80' },
+                          { name: 'Blocked', value: analyticsData.workload.blocked, fill: '#F04438' },
+                          { name: 'Completed', value: analyticsData.workload.completed, fill: '#12B76A' },
+                          { name: 'Overdue', value: analyticsData.workload.overdue, fill: '#B08A3E' },
+                          { name: 'Unassigned', value: analyticsData.workload.unassigned, fill: '#667085' },
+                        ]} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />
+                          <XAxis type="number" hide />
+                          <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#667085' }} width={80} />
+                          <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: '1px solid #E7E8EC' }} cursor={{fill: '#f9fafb'}} />
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Activity & Delivery */}
+                  <div className="space-y-4">
+                    <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                      <h3 className="text-sm font-semibold mb-4">Activity Insights</h3>
+                      <div className="space-y-2 text-sm text-gray-600">
+                        <div className="flex justify-between border-b pb-1"><span>Total Work Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.totalUpdates}</span></div>
+                        <div className="flex justify-between border-b pb-1"><span>Worker-Authored Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.workerAuthoredUpdates}</span></div>
+                        <div className="flex justify-between"><span>Management-Authored Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.managementAuthoredUpdates}</span></div>
+                      </div>
+                    </div>
+                    
+                    <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                      <h3 className="text-sm font-semibold mb-4">Delivery Insights</h3>
+                      <div className="space-y-2 text-sm text-gray-600">
+                        <div className="flex justify-between border-b pb-1"><span>Completed Tasks</span><span className="font-medium text-gray-900">{analyticsData.delivery.completedTasks}</span></div>
+                        <div className="flex justify-between border-b pb-1"><span>Avg Cycle Time (Hours)</span><span className="font-medium text-gray-900">{analyticsData.delivery.averageCycleTime ? analyticsData.delivery.averageCycleTime.toFixed(1) : 'N/A'}</span></div>
+                        <div className="flex justify-between border-b pb-1"><span>Tasks w/ Transition History</span><span className="font-medium text-gray-900">{analyticsData.delivery.tasksWithValidTransitionHistory}</span></div>
+                        <div className="flex justify-between"><span>Missing Transition History</span><span className="font-medium text-gray-900">{analyticsData.delivery.tasksMissingTransitionHistory}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </TabsContent>

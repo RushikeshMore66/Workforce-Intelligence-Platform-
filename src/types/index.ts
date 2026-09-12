@@ -10,3 +10,4 @@ export * from './dashboard';
 export * from './analytics';
 export * from './report';
 export * from './api';
+export * from './report-scheduling';

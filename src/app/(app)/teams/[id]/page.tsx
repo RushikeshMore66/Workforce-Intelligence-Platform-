@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTeamDetail } from './useTeamDetail';
 import { Avatar } from '@/components/ui/avatar';
@@ -8,10 +8,35 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, FolderKanban } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { SkeletonCard } from '@/components/ui/skeleton';
+import { getTeamAnalytics } from '@/lib/api/analytics';
+import { TeamAnalyticsResponse } from '@/types/analytics';
+import { isApiError } from '@/lib/api/client';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function TeamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { team, workers, isLoading, error, statusCode, refetch } = useTeamDetail(id);
+
+  const [analyticsData, setAnalyticsData] = useState<TeamAnalyticsResponse | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setAnalyticsLoading(true);
+      setAnalyticsError(null);
+      try {
+        const data = await getTeamAnalytics(id);
+        setAnalyticsData(data);
+      } catch (err) {
+        if (isApiError(err)) setAnalyticsError(err.detail);
+        else setAnalyticsError('Failed to load team analytics.');
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -136,6 +161,84 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Analytics Section */}
+      <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-sm overflow-hidden p-6 mt-5">
+        <h2 className="text-lg font-semibold text-[#172033] mb-5">Team Analytics</h2>
+        {analyticsLoading ? (
+          <div className="grid sm:grid-cols-2 gap-4"><SkeletonCard className="h-32" /><SkeletonCard className="h-32" /></div>
+        ) : analyticsError ? (
+          <div className="p-8 text-center text-sm text-[#F04438]">
+            {analyticsError}
+          </div>
+        ) : !analyticsData ? null : (
+          <div className="space-y-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                <div className="text-xs text-[#667085] mb-1">Active Workers</div>
+                <div className="text-xl font-bold text-[#172033]">{analyticsData.workforce.activeWorkers ?? 0}</div>
+              </div>
+              <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                <div className="text-xs text-[#667085] mb-1">Workers w/ Tasks</div>
+                <div className="text-xl font-bold text-[#172033]">{analyticsData.workforce.workersWithTasks ?? 0}</div>
+              </div>
+              <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                <div className="text-xs text-[#667085] mb-1">Total Workload (Tasks)</div>
+                <div className="text-xl font-bold text-[#172033]">{analyticsData.workload.totalTasks ?? analyticsData.workload.total ?? 0}</div>
+              </div>
+              <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
+                <div className="text-xs text-[#667085] mb-1">Completion Rate</div>
+                <div className="text-xl font-bold text-[#172033]">{(analyticsData.delivery.completionRate * 100).toFixed(1)}%</div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Workload */}
+              <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                <h3 className="text-sm font-semibold mb-4">Task Workload</h3>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { name: 'To Do', value: analyticsData.workload.todo, fill: '#E5E7EB' },
+                      { name: 'In Progress', value: analyticsData.workload.inProgress, fill: '#263B80' },
+                      { name: 'Blocked', value: analyticsData.workload.blocked, fill: '#F04438' },
+                      { name: 'Completed', value: analyticsData.workload.completed, fill: '#12B76A' },
+                      { name: 'Overdue', value: analyticsData.workload.overdue, fill: '#B08A3E' },
+                      { name: 'Unassigned', value: analyticsData.workload.unassigned, fill: '#667085' },
+                    ]} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#667085' }} width={80} />
+                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: '1px solid #E7E8EC' }} cursor={{fill: '#f9fafb'}} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Activity & Delivery */}
+              <div className="space-y-4">
+                <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold mb-4">Activity Insights</h3>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex justify-between border-b pb-1"><span>Total Work Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.totalUpdates}</span></div>
+                    <div className="flex justify-between border-b pb-1"><span>Worker-Authored Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.workerAuthoredUpdates}</span></div>
+                    <div className="flex justify-between"><span>Management-Authored Updates</span><span className="font-medium text-gray-900">{analyticsData.activity.managementAuthoredUpdates}</span></div>
+                  </div>
+                </div>
+                
+                <div className="border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold mb-4">Delivery Insights</h3>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex justify-between border-b pb-1"><span>Completed Tasks</span><span className="font-medium text-gray-900">{analyticsData.delivery.completedTasks}</span></div>
+                    <div className="flex justify-between border-b pb-1"><span>Avg Cycle Time (Hours)</span><span className="font-medium text-gray-900">{analyticsData.delivery.averageCycleTime ? analyticsData.delivery.averageCycleTime.toFixed(1) : 'N/A'}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

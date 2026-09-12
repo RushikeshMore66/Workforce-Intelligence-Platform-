@@ -25,7 +25,7 @@ export function useWorkerDetail(id: string) {
     }
   }, [id]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   useEffect(() => {
     fetchWorker();
   }, [fetchWorker]);

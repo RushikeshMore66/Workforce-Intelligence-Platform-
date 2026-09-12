@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+ 
 import { useState, useEffect, useCallback } from 'react';
 import { TeamViewModel, WorkerViewModel } from '@/types';
 import { getTeamById, getTeamWorkers } from '@/lib/api/teams';

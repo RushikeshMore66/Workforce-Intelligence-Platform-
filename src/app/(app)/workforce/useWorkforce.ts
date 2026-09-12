@@ -26,8 +26,9 @@ export function useWorkforce(params?: GetWorkersParams) {
     }
   }, [search, team_id, status]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchWorkers();
   }, [fetchWorkers]);
 

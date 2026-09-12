@@ -5,7 +5,7 @@ import zoneinfo
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.report_schedule import ReportFormatEnum, ReportFrequencyEnum, ReportTypeEnum
-from app.models.report_run import ReportRunStatusEnum
+from app.models.report_run import ReportRunStatusEnum, TriggerTypeEnum
 
 
 class ReportScheduleBase(BaseModel):
@@ -93,6 +93,8 @@ class ReportRunOut(BaseModel):
     id: str
     schedule_id: str
     status: ReportRunStatusEnum
+    trigger_type: TriggerTypeEnum
+    scheduled_for: Optional[datetime]
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
     error_message: Optional[str]

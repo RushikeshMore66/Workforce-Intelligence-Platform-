@@ -62,6 +62,7 @@ class ReportSchedule(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
 
     runs = relationship(
         "ReportRun",

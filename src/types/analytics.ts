@@ -1,35 +1,75 @@
-export interface TaskCompletionDataPoint {
-  month: string;
-  completed: number;
+export interface WorkforceMetrics {
+  totalWorkers?: number;
+  activeWorkers?: number;
+  workersWithTasks?: number;
+  workersWithoutTasks?: number;
+  totalTeams?: number;
+  activeTeams?: number;
+  totalProjects?: number;
+  activeProjects?: number;
+  teamWorkforceCount?: number;
+}
+
+export interface WorkloadMetrics {
+  total?: number;
+  totalTasks?: number;
+  todo: number;
   inProgress: number;
   blocked: number;
-}
-
-export interface TeamWorkloadDataPoint {
-  team: string;
-  tasks: number;
   completed: number;
-  blocked: number;
+  overdue: number;
+  unassigned: number;
 }
 
-export interface ProjectProgressDataPoint {
-  name: string;
-  progress: number;
-  target: number;
+export interface ActivityMetrics {
+  totalUpdates: number;
+  updatesLast7Days: number;
+  updatesLast30Days: number;
+  lastUpdateAt: string | null;
+  workerAuthoredUpdates: number;
+  managementAuthoredUpdates: number;
 }
 
-export interface WorkloadTrendPoint {
-  week: string;
-  backend: number;
-  frontend: number;
-  qa: number;
-  devops: number;
-  uiux: number;
+export interface DeliveryMetrics {
+  completedTasks: number;
+  completionRate: number;
+  averageCycleTime: number | null; // in hours
+  tasksWithValidTransitionHistory: number;
+  tasksMissingTransitionHistory: number;
 }
 
-export interface AnalyticsData {
-  taskCompletion: TaskCompletionDataPoint[];
-  teamWorkload: TeamWorkloadDataPoint[];
-  projectProgress: ProjectProgressDataPoint[];
-  workloadTrend: WorkloadTrendPoint[];
+export interface AttentionMetrics {
+  overdueTasks: number;
+  blockedTasks: number;
+  unassignedTasks: number;
+  atRiskProjects: number;
+  workersWithNoRecentActivity: number;
+}
+
+export interface OrganizationAnalyticsResponse {
+  workforce: WorkforceMetrics;
+  workload: WorkloadMetrics;
+  activity: ActivityMetrics;
+  delivery: DeliveryMetrics;
+  attention: AttentionMetrics;
+}
+
+export interface ProjectAnalyticsResponse {
+  workforce: WorkforceMetrics;
+  workload: WorkloadMetrics;
+  activity: ActivityMetrics;
+  delivery: DeliveryMetrics;
+}
+
+export interface TeamAnalyticsResponse {
+  workforce: WorkforceMetrics;
+  workload: WorkloadMetrics;
+  activity: ActivityMetrics;
+  delivery: DeliveryMetrics;
+}
+
+export interface WorkerAnalyticsResponse {
+  workload: WorkloadMetrics;
+  activity: ActivityMetrics;
+  delivery: DeliveryMetrics;
 }
