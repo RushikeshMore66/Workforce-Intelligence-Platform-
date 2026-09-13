@@ -22,6 +22,7 @@ from app.routers import (
     teams_router,
     workers_router,
 )
+from app.routers.metrics import router as metrics_router
 from app.routers.health import router as health_router
 from app.core.exceptions import (
     AuthenticationException,
@@ -34,6 +35,10 @@ from app.core.exceptions import (
 
 from app.scheduler.scheduler import start as scheduler_start
 from app.scheduler.scheduler import shutdown as scheduler_shutdown
+
+from app.observability.logging import configure_logging
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +89,12 @@ if settings.TRUSTED_HOST_ENABLED:
         TrustedHostMiddleware,
         allowed_hosts=settings.TRUSTED_HOSTS,
     )
+
+from app.middleware.request_id import RequestIDMiddleware
+app.add_middleware(RequestIDMiddleware)
+
+from app.middleware.metrics import MetricsMiddleware
+app.add_middleware(MetricsMiddleware)
 
 from app.middleware.security_headers import SecurityHeadersMiddleware
 app.add_middleware(SecurityHeadersMiddleware)
@@ -254,11 +265,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     Logs the full traceback for internal investigation.  The client receives a
     generic message — no stack traces, no database URLs, no secret values.
     """
-    logger.exception(
-        "Unhandled exception on %s %s",
-        request.method,
-        request.url.path,
-    )
+    logger.exception("Unhandled application exception")
     return JSONResponse(
         status_code=500,
         content={
@@ -273,6 +280,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 app.include_router(health_router)
 app.include_router(health_router, prefix=settings.API_V1_STR)
+app.include_router(metrics_router)
 
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)

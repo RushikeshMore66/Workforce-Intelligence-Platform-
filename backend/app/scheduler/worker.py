@@ -23,6 +23,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
+    from app.config import settings
+    if settings.SCHEDULER_METRICS_ENABLED:
+        from prometheus_client import start_http_server
+        from app.observability.scheduler_metrics import SCHEDULER_REGISTRY
+        logger.info(f"Starting scheduler metrics server on {settings.SCHEDULER_METRICS_HOST}:{settings.SCHEDULER_METRICS_PORT}")
+        start_http_server(settings.SCHEDULER_METRICS_PORT, addr=settings.SCHEDULER_METRICS_HOST, registry=SCHEDULER_REGISTRY)
+
     logger.info("Starting standalone scheduler worker...")
     start()
 

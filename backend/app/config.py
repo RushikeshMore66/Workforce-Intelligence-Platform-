@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     REPORT_STORAGE_PATH: str = "./storage/reports"
     REPORT_STALE_RUN_TIMEOUT_MINUTES: int = 60
     
+    # Scheduler Metrics
+    SCHEDULER_METRICS_ENABLED: bool = False
+    SCHEDULER_METRICS_HOST: str = "127.0.0.1"
+    SCHEDULER_METRICS_PORT: int = 9101
+    
+    # Metrics
+    METRICS_ENABLED: bool = True
+    METRICS_PATH: str = "/metrics"
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

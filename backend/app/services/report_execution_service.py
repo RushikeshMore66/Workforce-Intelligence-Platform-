@@ -1,3 +1,4 @@
+import time
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,12 @@ from app.services.report_run_service import ReportRunService
 from app.services.report_scheduling_utils import calculate_next_run_at
 from app.services.report_service import ReportService
 from app.services.report_storage_service import ReportStorageService
+from app.observability.scheduler_metrics import (
+    record_job_started,
+    record_job_succeeded,
+    record_job_failed,
+    record_job_finished,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +55,7 @@ class ReportExecutionService:
         schedule.last_run_at = scheduled_for
         self.db.commit()
 
-        return self._execute_run(run, schedule)
+        return self._execute_run(run, schedule, "scheduled")
 
     def execute_manual(self, schedule: ReportSchedule) -> ReportRun:
         if not schedule.is_active:
@@ -57,13 +64,16 @@ class ReportExecutionService:
         run = ReportRunService.create_manual_run(self.db, schedule.id)
         self.db.commit()
 
-        return self._execute_run(run, schedule)
+        return self._execute_run(run, schedule, "manual")
 
-    def _execute_run(self, run: ReportRun, schedule: ReportSchedule) -> ReportRun:
-        ReportRunService.mark_running(self.db, run.id)
-        self.db.commit()
+    def _execute_run(self, run: ReportRun, schedule: ReportSchedule, execution_mode: str) -> ReportRun:
+        started_at = time.perf_counter()
+        record_job_started("report", execution_mode)
 
         try:
+            ReportRunService.mark_running(self.db, run.id)
+            self.db.commit()
+    
             report_data = self._generate_report(schedule)
 
             # Export bytes
@@ -103,12 +113,20 @@ class ReportExecutionService:
 
             ReportRunService.mark_completed(self.db, run.id, str(path), filename)
             self.db.commit()
+            
+            record_job_succeeded("report", execution_mode)
 
         except Exception as exc:
             logger.exception("Report execution failed for run %s", run.id)
             error_msg = str(exc)[:500] if str(exc) else "An unexpected error occurred"
             ReportRunService.mark_failed(self.db, run.id, error_msg)
             self.db.commit()
+            
+            record_job_failed("report", execution_mode)
+
+        finally:
+            duration = time.perf_counter() - started_at
+            record_job_finished("report", execution_mode, duration)
 
         return run
 

@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,7 @@ from app.config import settings
 from app.models.report_schedule import ReportSchedule
 from app.services.report_execution_service import ReportExecutionService
 from app.services.report_run_service import ReportRunService
+from app.observability.scheduler_metrics import SCHEDULER_HEARTBEAT_TIMESTAMP, record_job_recovered
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ def tick(db: Session) -> None:
         )
         if recovered > 0:
             logger.warning("Recovered %d stale run(s)", recovered)
+            for _ in range(recovered):
+                record_job_recovered("report")
     except Exception:
         db.rollback()
         logger.exception("Failed to recover stale runs")
@@ -63,3 +67,5 @@ def tick(db: Session) -> None:
                 "Coordinator error for schedule %s",
                 schedule.id,
             )
+
+    SCHEDULER_HEARTBEAT_TIMESTAMP.set(time.time())
