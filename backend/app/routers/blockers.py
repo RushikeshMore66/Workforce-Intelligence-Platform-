@@ -9,14 +9,14 @@ from app.models.blocker import Blocker, BlockerStatusEnum
 from app.models.activity import ProjectActivity, ActivityTypeEnum
 from app.models.user import User, UserRoleEnum
 from app.repositories.blocker_repo import BlockerRepository
-from app.auth.dependencies import (
-    get_current_user,
-    authorize_project_access,
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import (authorize_project_access,
     authorize_blocker_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
-    _get_worker_profile,
-)
+    _get_worker_profile,)
 from app.core.exceptions import EntityNotFoundException
 
 router = APIRouter(prefix="/blockers", tags=["Blockers"])

@@ -15,14 +15,13 @@ from app.repositories.blocker_repo import BlockerRepository
 from app.models.activity import ProjectActivity
 from app.models.project import Project
 from app.models.user import User, UserRoleEnum, Supervisor, TeamLeader, Worker
-from app.auth.dependencies import (
-    get_current_user,
-    require_supervisor,
-    authorize_project_access,
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import (authorize_project_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
-    _get_worker_profile,
-)
+    _get_worker_profile,)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -88,7 +87,7 @@ def get_project(
 def create_project(
     project_in: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_supervisor),
+    current_user: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
 ):
     service = ProjectService(db)
     return service.create_project(project_in, current_user_name=current_user.name)
@@ -99,7 +98,7 @@ def update_project(
     project_id: str,
     project_in: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_supervisor),
+    current_user: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
 ):
     """Update a project. SUPERVISOR may only update projects assigned to them."""
     # Raises 403 if the supervisor is not assigned to this project

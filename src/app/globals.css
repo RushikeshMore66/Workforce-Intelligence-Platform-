@@ -145,7 +145,7 @@
 
 @layer utilities {
   .text-balance {
-    text-wrap: balance;
+    /* text-wrap: balance; (not supported by Chrome < 114) */
   }
 
   .wi-surface {

@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.notification import NotificationOut
 from app.repositories.notification_repo import NotificationRepository
-from app.auth.dependencies import get_current_user, authorize_notification_ownership
+from app.auth.dependencies import get_current_user
+from app.authorization.policies import authorize_notification_ownership
 from app.models.user import User
 from app.core.exceptions import EntityNotFoundException
 

@@ -7,13 +7,13 @@ from app.services.team_service import TeamService
 from app.repositories.worker_repo import WorkerRepository
 from app.schemas.user import WorkerOut
 from app.models.user import User, UserRoleEnum
-from app.auth.dependencies import (
-    get_current_user,
-    authorize_team_access,
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import (authorize_team_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
-    _get_worker_profile,
-)
+    _get_worker_profile,)
 from app.schemas.analytics import TeamAnalyticsOut
 from app.services.team_analytics_service import TeamAnalyticsService
 from app.core.exceptions import EntityNotFoundException, PermissionDeniedException

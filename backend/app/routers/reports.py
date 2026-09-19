@@ -7,13 +7,12 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import (
-    authorize_project_access,
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import (authorize_project_access,
     authorize_team_access,
-    authorize_worker_access,
-    get_current_user,
-    require_owner,
-)
+    authorize_worker_access,)
 from app.database import get_db
 from app.models.user import User
 from app.schemas.reports import (
@@ -32,7 +31,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 @router.get("/organization", response_model=OrganizationSummaryReport)
 def get_organization_report(
     db: Session = Depends(get_db),
-    _: User = Depends(require_owner),
+    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
 ):
     """Organization-wide summary report. OWNER only."""
     return ReportService(db).get_organization_report()
@@ -93,7 +92,7 @@ def get_activity_report(
     - If no scope filter: OWNER sees all; others see their scoped updates.
     """
     from app.models.user import UserRoleEnum, Worker, TeamLeader
-    from app.auth.dependencies import (
+    from app.authorization.policies import (
         _get_worker_profile,
         _get_team_leader_profile,
         _get_supervisor_profile,
@@ -148,7 +147,7 @@ def _stream(data: bytes, content_type: str, filename: str) -> StreamingResponse:
 def export_organization_report(
     format: str = Query(default="csv"),
     db: Session = Depends(get_db),
-    _: User = Depends(require_owner),
+    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
 ):
     """Export organization-wide summary report. OWNER only."""
     report = ReportService(db).get_organization_report()
@@ -218,7 +217,7 @@ def export_activity_report(
     """
     from fastapi import HTTPException
     from app.models.user import UserRoleEnum
-    from app.auth.dependencies import _get_worker_profile, _get_team_leader_profile
+    from app.authorization.policies import _get_worker_profile, _get_team_leader_profile
 
     if limit > 1000:
         raise HTTPException(status_code=400, detail="Activity export limit cannot exceed 1000.")

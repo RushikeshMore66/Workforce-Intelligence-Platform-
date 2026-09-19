@@ -8,12 +8,10 @@ from app.models.task import Task, WorkUpdate, TaskTransition
 from app.models.activity import ProjectActivity, ActivityTypeEnum
 from app.models.user import User, UserRoleEnum
 from app.repositories.task_repo import TaskRepository
-from app.auth.dependencies import (
-    get_current_user,
-    require_team_lead,
-    authorize_task_access,
-    _get_worker_profile,
-)
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import authorize_task_access
 from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -33,7 +31,7 @@ def get_task(
 def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_team_lead),
+    current_user: User = Depends(RequirePermission(Permission.TASK_CREATE)),
 ):
     """Create a task. Requires OWNER, SUPERVISOR, or TEAM_LEADER role."""
     repo = TaskRepository(db)

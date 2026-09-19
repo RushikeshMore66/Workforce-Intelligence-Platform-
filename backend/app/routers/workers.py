@@ -10,13 +10,13 @@ from app.services.worker_service import WorkerService
 from app.services.worker_analytics_service import WorkerAnalyticsService
 from app.models.user import User, UserRoleEnum
 from app.models.task import Task, WorkUpdate
-from app.auth.dependencies import (
-    get_current_user,
-    authorize_worker_access,
+from app.auth.dependencies import get_current_user
+from app.authorization.dependencies import RequirePermission
+from app.authorization.permissions import Permission
+from app.authorization.policies import (authorize_worker_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
-    _get_worker_profile,
-)
+    _get_worker_profile,)
 
 router = APIRouter(prefix="/workers", tags=["Workers"])
 
