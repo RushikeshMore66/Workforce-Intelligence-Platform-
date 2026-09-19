@@ -55,9 +55,6 @@ export default function SettingsPage() {
         <p className="text-sm text-[#667085] mt-0.5">Manage your account preferences and application settings.</p>
       </div>
 
-      <div className="bg-[#FFFAEB] border border-[#FEDF89] rounded-xl px-5 py-3.5 text-sm text-[#B54708]">
-        <strong>Demo mode:</strong> Settings changes are not persisted. This page demonstrates the intended settings UI layout.
-      </div>
 
       {/* Profile Card */}
       <ProfileCard />
@@ -90,9 +87,10 @@ export default function SettingsPage() {
       ))}
 
       <div className="bg-white border border-[#E7E8EC] rounded-xl p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-[#172033] mb-3">Danger Zone</h2>
+        <h2 className="text-sm font-semibold text-[#172033] mb-3">Account Actions</h2>
         <div className="border border-[#FECDCA] rounded-lg p-4 bg-[#FEF3F2]">
-          <p className="text-sm text-[#B42318]">Account deletion and data export options will be available when the backend is connected.</p>
+          <p className="text-sm text-[#B42318] font-medium">Account deletion and data export</p>
+          <p className="text-sm text-[#B42318] mt-1">Contact your organisation owner to request account changes.</p>
         </div>
       </div>
     </div>

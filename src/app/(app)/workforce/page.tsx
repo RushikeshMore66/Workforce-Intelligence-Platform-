@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useWorkforce } from './useWorkforce';
+import { useTeams } from '@/hooks/useTeams';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,14 @@ export default function WorkforcePage() {
     search: search || undefined,
     status: statusFilter || undefined,
   });
+
+  const { teams } = useTeams();
+
+  // Build a fast team ID → name lookup map
+  const teamNameMap = useMemo(() => {
+    if (!teams) return new Map<string, string>();
+    return new Map(teams.map(t => [t.id, t.name]));
+  }, [teams]);
 
   const statusCounts = useMemo(() => {
     if (!workers) return { active: 0, leave: 0, unavailable: 0 };
@@ -56,11 +65,11 @@ export default function WorkforcePage() {
       <div className="bg-white border border-[#E7E8EC] rounded-xl px-4 py-3.5 flex flex-wrap gap-3 items-center shadow-[0_1px_3px_0_rgba(16,24,40,0.06)]">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
-          <Input 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            placeholder="Search by name or role..." 
-            className="pl-9" 
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or role..."
+            className="pl-9"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -97,7 +106,7 @@ export default function WorkforcePage() {
               <TableRow>
                 <TableHead>Worker</TableHead>
                 <TableHead className="hidden md:table-cell">Role</TableHead>
-                <TableHead className="hidden sm:table-cell">Team ID</TableHead>
+                <TableHead className="hidden sm:table-cell">Team</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -114,7 +123,9 @@ export default function WorkforcePage() {
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-[#667085] text-xs">{w.role}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-[#667085] text-xs font-mono">{w.teamId ?? '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-[#374151] text-xs">
+                      {w.teamId ? (teamNameMap.get(w.teamId) ?? w.teamId) : '—'}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={w.status === 'ACTIVE' ? 'success' : w.status === 'ON_LEAVE' ? 'warning' : 'default'}

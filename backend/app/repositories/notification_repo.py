@@ -14,6 +14,12 @@ class NotificationRepository(BaseRepository[Notification]):
             query = query.filter((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
         return query.order_by(Notification.timestamp.desc()).all()
 
+    def get_unread_count(self, user_id: Optional[str] = None) -> int:
+        query = self.db.query(Notification).filter(Notification.read == False)
+        if user_id:
+            query = query.filter((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
+        return query.count()
+
     def mark_all_read(self, user_id: Optional[str] = None) -> int:
         query = self.db.query(Notification).filter(Notification.read == False)
         if user_id:

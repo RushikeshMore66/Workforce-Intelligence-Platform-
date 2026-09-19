@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.user import WorkerOut
@@ -9,7 +10,7 @@ from app.schemas.analytics import WorkerAnalyticsOut
 from app.services.worker_service import WorkerService
 from app.services.worker_analytics_service import WorkerAnalyticsService
 from app.models.user import User, UserRoleEnum
-from app.models.task import Task, WorkUpdate
+from app.models.task import Task, TaskStatusEnum, WorkUpdate
 from app.auth.dependencies import get_current_user
 from app.authorization.dependencies import RequirePermission
 from app.authorization.permissions import Permission
@@ -21,7 +22,25 @@ from app.authorization.policies import (authorize_worker_access,
 router = APIRouter(prefix="/workers", tags=["Workers"])
 
 
-def _format_worker(w) -> WorkerOut:
+def _compute_task_counts(worker_id: str, db: Session) -> dict:
+    """Compute task status counts for a worker from the Task table."""
+    rows = (
+        db.query(Task.status, func.count(Task.id))
+        .filter(Task.assignee_id == worker_id)
+        .group_by(Task.status)
+        .all()
+    )
+    counts = {r[0]: r[1] for r in rows}
+    return {
+        "completed": counts.get(TaskStatusEnum.COMPLETED, 0),
+        "in_progress": counts.get(TaskStatusEnum.IN_PROGRESS, 0),
+        "pending": counts.get(TaskStatusEnum.TODO, 0),
+        "blocked": counts.get(TaskStatusEnum.BLOCKED, 0),
+    }
+
+
+def _format_worker(w, db: Session) -> WorkerOut:
+    counts = _compute_task_counts(w.id, db)
     return WorkerOut(
         id=w.id,
         name=w.user.name if w.user else "Unknown",
@@ -32,11 +51,11 @@ def _format_worker(w) -> WorkerOut:
         supervisor_id=w.supervisor_id,
         avatar_initials=w.user.avatar_initials if w.user else "W",
         status=w.status.value,
-        active_project_id=getattr(w, "active_project_id", None),
-        completed_task_count=getattr(w, "completed_task_count", 0),
-        in_progress_task_count=getattr(w, "in_progress_task_count", 0),
-        pending_task_count=getattr(w, "pending_task_count", 0),
-        blocked_task_count=getattr(w, "blocked_task_count", 0),
+        active_project_id=w.active_project_id,
+        completed_task_count=counts["completed"],
+        in_progress_task_count=counts["in_progress"],
+        pending_task_count=counts["pending"],
+        blocked_task_count=counts["blocked"],
     )
 
 
@@ -59,27 +78,27 @@ def get_workers(
     all_workers = service.get_workers(search=search, team_id=team_id, status=status)
 
     if current_user.role == UserRoleEnum.OWNER:
-        return [_format_worker(w) for w in all_workers]
+        return [_format_worker(w, db) for w in all_workers]
 
     if current_user.role == UserRoleEnum.SUPERVISOR:
         sup = _get_supervisor_profile(current_user, db)
         if not sup:
             return []
         allowed_ids = {w.id for w in sup.workers}
-        return [_format_worker(w) for w in all_workers if w.id in allowed_ids]
+        return [_format_worker(w, db) for w in all_workers if w.id in allowed_ids]
 
     if current_user.role == UserRoleEnum.TEAM_LEADER:
         leader = _get_team_leader_profile(current_user, db)
         if not leader:
             return []
         allowed_ids = {w.id for w in leader.workers}
-        return [_format_worker(w) for w in all_workers if w.id in allowed_ids]
+        return [_format_worker(w, db) for w in all_workers if w.id in allowed_ids]
 
     if current_user.role == UserRoleEnum.WORKER:
         own_worker = _get_worker_profile(current_user, db)
         if not own_worker:
             return []
-        return [_format_worker(w) for w in all_workers if w.id == own_worker.id]
+        return [_format_worker(w, db) for w in all_workers if w.id == own_worker.id]
 
     return []
 
@@ -92,7 +111,7 @@ def get_worker(
 ):
     """Fetch a single worker. Raises 403 if the user cannot access it."""
     w = authorize_worker_access(worker_id, current_user, db)
-    return _format_worker(w)
+    return _format_worker(w, db)
 
 
 @router.get("/{worker_id}/tasks", response_model=PaginatedResponse[TaskOut])
@@ -105,11 +124,11 @@ def get_worker_tasks(
 ):
     """Get tasks assigned to a specific worker."""
     authorize_worker_access(worker_id, current_user, db)
-    
+
     query = db.query(Task).filter(Task.assignee_id == worker_id)
     total = query.count()
     items = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    
+
     return PaginatedResponse(
         items=items,
         page=page,
@@ -128,11 +147,11 @@ def get_worker_updates(
 ):
     """Get work updates belonging to a specific worker."""
     authorize_worker_access(worker_id, current_user, db)
-    
+
     query = db.query(WorkUpdate).filter(WorkUpdate.worker_id == worker_id)
     total = query.count()
     items = query.order_by(WorkUpdate.timestamp.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    
+
     return PaginatedResponse(
         items=items,
         page=page,
@@ -149,6 +168,6 @@ def get_worker_analytics_data(
 ):
     """Get deterministic analytics data for a specific worker."""
     authorize_worker_access(worker_id, current_user, db)
-    
+
     service = WorkerAnalyticsService(db)
     return service.get_worker_analytics(worker_id)

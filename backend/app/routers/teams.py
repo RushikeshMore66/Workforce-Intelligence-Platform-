@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.team import TeamOut
@@ -17,6 +18,7 @@ from app.authorization.policies import (authorize_team_access,
 from app.schemas.analytics import TeamAnalyticsOut
 from app.services.team_analytics_service import TeamAnalyticsService
 from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
+from app.models.task import Task, TaskStatusEnum
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
 
@@ -32,7 +34,14 @@ def _format_team(t) -> TeamOut:
     )
 
 
-def _format_worker(w) -> WorkerOut:
+def _format_worker(w, db: Session) -> WorkerOut:
+    rows = (
+        db.query(Task.status, func.count(Task.id))
+        .filter(Task.assignee_id == w.id)
+        .group_by(Task.status)
+        .all()
+    )
+    counts = {r[0]: r[1] for r in rows}
     return WorkerOut(
         id=w.id,
         name=w.user.name if w.user else "Worker",
@@ -43,11 +52,11 @@ def _format_worker(w) -> WorkerOut:
         supervisor_id=w.supervisor_id,
         avatar_initials=w.user.avatar_initials if w.user else "W",
         status=w.status.value,
-        active_project_id=getattr(w, "active_project_id", None),
-        completed_task_count=getattr(w, "completed_task_count", 0),
-        in_progress_task_count=getattr(w, "in_progress_task_count", 0),
-        pending_task_count=getattr(w, "pending_task_count", 0),
-        blocked_task_count=getattr(w, "blocked_task_count", 0),
+        active_project_id=w.active_project_id,
+        completed_task_count=counts.get(TaskStatusEnum.COMPLETED, 0),
+        in_progress_task_count=counts.get(TaskStatusEnum.IN_PROGRESS, 0),
+        pending_task_count=counts.get(TaskStatusEnum.TODO, 0),
+        blocked_task_count=counts.get(TaskStatusEnum.BLOCKED, 0),
     )
 
 
@@ -113,7 +122,7 @@ def get_team_workers(
 
     repo = WorkerRepository(db)
     workers = repo.get_by_team(team_id)
-    return [_format_worker(w) for w in workers]
+    return [_format_worker(w, db) for w in workers]
 
 
 @router.get("/{team_id}/analytics", response_model=TeamAnalyticsOut)

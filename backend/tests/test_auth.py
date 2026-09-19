@@ -19,7 +19,7 @@ def test_login_success(client):
 def test_login_invalid_password(client):
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "rajesh.mehta@apexsoftware.in", "password": "wrongpassword"},
+        json={"email": "rushismore7777@gmail.com", "password": "unauthorized password"},
     )
     assert response.status_code == 401
 
@@ -28,7 +28,7 @@ def test_get_me(client):
     # Test getting current user profile
     login_resp = client.post(
         "/api/v1/auth/login",
-        json={"email": "rajesh.mehta@apexsoftware.in", "password": "password123"},
+        json={"email": "rushismore7777@gmail.com", "password": "RUSHIKESH76"},
     )
     token = login_resp.json()["access_token"]
 
@@ -38,5 +38,5 @@ def test_get_me(client):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["email"] == "rajesh.mehta@apexsoftware.in"
+    assert data["email"] == "rushismore7777@gmail.com"
     assert data["role"] == "OWNER"
