@@ -9,10 +9,11 @@ from app.models.project import ProjectPriorityEnum
 
 
 class TaskStatusEnum(str, enum.Enum):
-    TODO = "TODO"
+    PLANNED = "PLANNED"
     IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
     COMPLETED = "COMPLETED"
-    BLOCKED = "BLOCKED"
+    CANCELLED = "CANCELLED"
 
 
 class Task(Base):
@@ -27,7 +28,7 @@ class Task(Base):
     status = Column(
         Enum(TaskStatusEnum, name="task_status_enum"),
         nullable=False,
-        default=TaskStatusEnum.TODO,
+        default=TaskStatusEnum.PLANNED,
         index=True,
     )
     priority = Column(
@@ -41,13 +42,7 @@ class Task(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     project = relationship("Project", back_populates="tasks")
-
-    assignee = relationship(
-        "Worker",
-        back_populates="tasks",
-        foreign_keys=[assignee_id],
-    )
-
+    assignee = relationship("Worker", back_populates="tasks", foreign_keys=[assignee_id])
     team = relationship("Team", foreign_keys=[team_id])
 
     updates = relationship(
@@ -64,10 +59,7 @@ class Task(Base):
         order_by="TaskTransition.timestamp.asc()",
     )
 
-    blockers = relationship(
-        "Blocker",
-        back_populates="task",
-    )
+    blockers = relationship("Blocker", back_populates="task")
 
 
 class WorkUpdate(Base):
@@ -81,17 +73,8 @@ class WorkUpdate(Base):
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     task = relationship("Task", back_populates="updates")
-
-    worker = relationship(
-        "Worker",
-        back_populates="work_updates",
-        foreign_keys=[worker_id],
-    )
-
-    created_by = relationship(
-        "User",
-        foreign_keys=[created_by_user_id],
-    )
+    worker = relationship("Worker", back_populates="work_updates", foreign_keys=[worker_id])
+    created_by = relationship("User", foreign_keys=[created_by_user_id])
 
 
 class TaskTransition(Base):
@@ -102,11 +85,8 @@ class TaskTransition(Base):
     from_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=True)
     to_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=False)
     changed_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    reason = Column(Text, nullable=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     task = relationship("Task", back_populates="transitions")
-
-    changed_by = relationship(
-        "User",
-        foreign_keys=[changed_by_user_id],
-    )
+    changed_by = relationship("User", foreign_keys=[changed_by_user_id])
