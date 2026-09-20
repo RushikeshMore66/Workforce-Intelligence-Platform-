@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.authorization.policies import authorize_task_access
 from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
+from app.models.activity import ActivityTypeEnum, ProjectActivity
 from app.models.task import Task, TaskStatusEnum, TaskTransition
 from app.models.user import User, UserRoleEnum
+from app.services.project_progress_service import ProjectProgressService
 
 
 class TaskWorkflowService:
@@ -89,8 +91,36 @@ class TaskWorkflowService:
             reason=reason.strip() if reason else None,
         )
 
-        self.db.add(transition)
+        activity_type = (
+            ActivityTypeEnum.TASK_COMPLETED
+            if to_status == TaskStatusEnum.COMPLETED
+            else ActivityTypeEnum.TASK_STATUS_CHANGED
+        )
+
+        activity = ProjectActivity(
+            id=f"act-task-status-{uuid.uuid4().hex[:10]}",
+            project_id=task.project_id,
+            description=(
+                f"Task '{task.title}' changed from "
+                f"{old_status.value} to {to_status.value} "
+                f"by {current_user.name}."
+                + (f" Reason: {reason.strip()}" if reason else "")
+            ),
+            user_id=current_user.id,
+            user_name=current_user.name,
+            type=activity_type,
+        )
+
+        # Progress is derived from the task state transition in the same
+        # transaction as the transition and audit event.
+        ProjectProgressService.recalculate_project_progress(
+            self.db,
+            task.project_id,
+        )
+
         self.db.add(task)
+        self.db.add(transition)
+        self.db.add(activity)
         self.db.commit()
         self.db.refresh(task)
 
