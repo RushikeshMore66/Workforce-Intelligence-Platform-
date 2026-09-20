@@ -1,18 +1,27 @@
 import uuid
-from typing import List
-from fastapi import APIRouter, Depends, status
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, WorkUpdateCreate, WorkUpdateOut
-from app.models.task import Task, WorkUpdate, TaskTransition
-from app.models.activity import ProjectActivity, ActivityTypeEnum
-from app.models.user import User, UserRoleEnum
-from app.repositories.task_repo import TaskRepository
+
 from app.auth.dependencies import get_current_user
 from app.authorization.dependencies import RequirePermission
 from app.authorization.permissions import Permission
 from app.authorization.policies import authorize_task_access
-from app.core.exceptions import EntityNotFoundException, PermissionDeniedException
+from app.core.exceptions import PermissionDeniedException
+from app.database import get_db
+from app.models.activity import ActivityTypeEnum, ProjectActivity
+from app.models.task import Task, WorkUpdate
+from app.models.user import User, UserRoleEnum
+from app.repositories.task_repo import TaskRepository
+from app.schemas.task import (
+    TaskCreate,
+    TaskOut,
+    TaskStatusChange,
+    TaskUpdate,
+    WorkUpdateCreate,
+    WorkUpdateOut,
+)
+from app.services.task_workflow_service import TaskWorkflowService
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -23,7 +32,6 @@ def get_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fetch a task. Raises 403 if the user is not authorized to see it."""
     return authorize_task_access(task_id, current_user, db)
 
 
@@ -33,7 +41,6 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(RequirePermission(Permission.TASK_CREATE)),
 ):
-    """Create a task. Requires OWNER, SUPERVISOR, or TEAM_LEADER role."""
     repo = TaskRepository(db)
     task_dict = task_in.model_dump()
     task_dict["id"] = f"task-{uuid.uuid4().hex[:6]}"
@@ -48,54 +55,35 @@ def update_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a task. Workers may only update their own assigned tasks."""
-    # Read the task to perform authorization checks
-    authorize_task_access(task_id, current_user, db)
+    """
+    Update task metadata.
+
+    Workers intentionally cannot use this endpoint for task editing.
+    Their operational action is the dedicated status-transition endpoint
+    plus work updates.
+    """
+    task = authorize_task_access(task_id, current_user, db)
+
+    if current_user.role == UserRoleEnum.WORKER:
+        raise PermissionDeniedException(
+            "Workers can only update their work status and submit work updates."
+        )
 
     update_data = task_in.model_dump(exclude_unset=True)
 
-    # Lock the task row exclusively if status might be changing to prevent transition history races
-    if "status" in update_data:
-        task = db.query(Task).with_for_update().filter(Task.id == task_id).first()
-    else:
-        task = db.query(Task).filter(Task.id == task_id).first()
-
-    old_status = task.status
-    new_status = update_data.get("status")
-
-    transition = None
-    if new_status and new_status != old_status:
-        transition = TaskTransition(
-            id=f"tt-{uuid.uuid4().hex[:6]}",
-            task_id=task.id,
-            from_status=old_status,
-            to_status=new_status,
-            changed_by_user_id=current_user.id
-        )
-
-    # Apply changes
     for field, value in update_data.items():
         setattr(task, field, value)
-        
-    db.add(task)
-    if transition:
-        db.add(transition)
 
-    # Log task activity
     activity = ProjectActivity(
         id=f"act-{uuid.uuid4().hex[:6]}",
         project_id=task.project_id,
-        description=f"Task '{task.title}' updated by {current_user.name}.",
+        description=f"Task '{task.title}' metadata updated by {current_user.name}.",
         user_id=current_user.id,
         user_name=current_user.name,
         type=ActivityTypeEnum.TASK_UPDATED,
     )
-    if new_status and new_status != old_status:
-        if new_status == "COMPLETED":
-            activity.type = ActivityTypeEnum.TASK_COMPLETED
-        else:
-            activity.type = ActivityTypeEnum.TASK_STATUS_CHANGED
 
+    db.add(task)
     db.add(activity)
     db.commit()
     db.refresh(task)
@@ -103,23 +91,72 @@ def update_task(
     return task
 
 
-@router.post("/{task_id}/updates", response_model=WorkUpdateOut, status_code=status.HTTP_201_CREATED)
+@router.post("/{task_id}/status", response_model=TaskOut)
+def change_task_status(
+    task_id: str,
+    status_in: TaskStatusChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Change task status through the workflow engine.
+
+    Workers may transition their own assigned tasks only through legal
+    transitions. Management roles can transition tasks inside their scope.
+    """
+    task = authorize_task_access(task_id, current_user, db)
+
+    workflow = TaskWorkflowService(db)
+    updated_task = workflow.transition(
+        task_id=task.id,
+        to_status=status_in.status,
+        current_user=current_user,
+        reason=status_in.reason,
+    )
+
+    activity_type = (
+        ActivityTypeEnum.TASK_COMPLETED
+        if status_in.status.value == "COMPLETED"
+        else ActivityTypeEnum.TASK_STATUS_CHANGED
+    )
+
+    activity = ProjectActivity(
+        id=f"act-{uuid.uuid4().hex[:6]}",
+        project_id=updated_task.project_id,
+        description=(
+            f"Task '{updated_task.title}' changed from "
+            f"{task.status.value} to {updated_task.status.value} "
+            f"by {current_user.name}."
+        ),
+        user_id=current_user.id,
+        user_name=current_user.name,
+        type=activity_type,
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(updated_task)
+
+    return updated_task
+
+
+@router.post(
+    "/{task_id}/updates",
+    response_model=WorkUpdateOut,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_work_update(
     task_id: str,
     update_in: WorkUpdateCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Add a work update to a task.
-
-    Workers may only post updates on their own assigned tasks.
-    Supervisors and Team Leaders may post on tasks within their scope.
-    """
-    from fastapi import HTTPException
     task = authorize_task_access(task_id, current_user, db)
 
     if not task.assignee_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot post update to an unassigned task")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot post an update to an unassigned task.",
+        )
 
     work_update = WorkUpdate(
         id=f"wu-{uuid.uuid4().hex[:6]}",
@@ -128,6 +165,7 @@ def add_work_update(
         created_by_user_id=current_user.id,
         description=update_in.description,
     )
+
     db.add(work_update)
     db.commit()
     db.refresh(work_update)
