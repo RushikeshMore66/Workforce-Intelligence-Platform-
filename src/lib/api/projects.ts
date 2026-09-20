@@ -1,9 +1,17 @@
 /**
  * Projects API module.
- * CRUD operations and queries for Project entities.
+ *
+ * Project metadata updates and project lifecycle transitions are separate
+ * operations so the UI cannot accidentally bypass workflow rules.
  */
 
-import { CreateProjectInput, ProjectViewModel, UpdateProjectInput, ProjectDetail } from '@/types';
+import {
+  ChangeProjectStatusInput,
+  CreateProjectInput,
+  ProjectDetail,
+  ProjectViewModel,
+  UpdateProjectInput,
+} from '@/types';
 import { apiClient } from './client';
 
 export interface ProjectFilters {
@@ -13,20 +21,42 @@ export interface ProjectFilters {
   priority?: string;
 }
 
-export async function getProjects(filters?: ProjectFilters): Promise<ProjectViewModel[]> {
-  return apiClient.get<ProjectViewModel[]>('/projects', filters as Record<string, string | undefined>);
+export async function getProjects(
+  filters?: ProjectFilters,
+): Promise<ProjectViewModel[]> {
+  return apiClient.get<ProjectViewModel[]>(
+    '/projects',
+    filters as Record<string, string | undefined>,
+  );
 }
 
-export async function getProjectById(id: string): Promise<ProjectDetail | null> {
+export async function getProjectById(
+  id: string,
+): Promise<ProjectDetail | null> {
   return apiClient.get<ProjectDetail>(`/projects/${id}`);
 }
 
-export async function createProject(input: CreateProjectInput): Promise<ProjectViewModel> {
+export async function createProject(
+  input: CreateProjectInput,
+): Promise<ProjectViewModel> {
   return apiClient.post<ProjectViewModel>('/projects', input);
 }
 
-export async function updateProject(id: string, input: UpdateProjectInput): Promise<ProjectViewModel | null> {
+export async function updateProject(
+  id: string,
+  input: UpdateProjectInput,
+): Promise<ProjectViewModel | null> {
   return apiClient.patch<ProjectViewModel>(`/projects/${id}`, input);
+}
+
+export async function changeProjectStatus(
+  id: string,
+  input: ChangeProjectStatusInput,
+): Promise<ProjectViewModel> {
+  return apiClient.post<ProjectViewModel>(
+    `/projects/${id}/status`,
+    input,
+  );
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
