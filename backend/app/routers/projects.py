@@ -1,4 +1,5 @@
 from typing import List, Optional
+import uuid
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -26,6 +27,7 @@ from app.schemas.common import ProjectHealth, ProjectPriority, ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectStatusChange, ProjectUpdate
 from app.schemas.task import TaskOut
 from app.services.project_analytics_service import ProjectAnalyticsService
+from app.services.project_progress_service import ProjectProgressService
 from app.services.project_service import ProjectService
 from app.services.project_workflow_service import ProjectWorkflowService
 
@@ -126,23 +128,32 @@ def change_project_status(
 ):
     project = authorize_project_access(project_id, current_user, db)
 
+    ProjectProgressService.recalculate_project_progress(db, project.id)
+
+    target_status = ProjectStatusEnum(status_in.status.value)
     ProjectWorkflowService.validate_transition(
         project=project,
-        to_status=ProjectStatusEnum(status_in.status.value),
+        to_status=target_status,
         user=current_user,
+        db=db,
+        reason=status_in.reason,
     )
 
     old_status = project.status
-    project.status = ProjectStatusEnum(status_in.status.value)
+    project.status = target_status
 
     activity = ProjectActivity(
-        id=f"act-project-status-{project.id}",
+        id=f"act-project-status-{uuid.uuid4().hex[:10]}",
         project_id=project.id,
         description=(
             f"Project '{project.name}' changed from "
             f"{old_status.value} to {project.status.value} "
             f"by {current_user.name}."
-            + (f" Reason: {status_in.reason.strip()}" if status_in.reason else "")
+            + (
+                f" Reason: {status_in.reason.strip()}"
+                if status_in.reason
+                else ""
+            )
         ),
         user_id=current_user.id,
         user_name=current_user.name,
