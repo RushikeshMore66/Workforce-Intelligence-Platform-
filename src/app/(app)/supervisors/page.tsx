@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getSupervisors } from '@/lib/api/supervisors';
 import { getProjects } from '@/lib/api/projects';
@@ -6,8 +9,8 @@ import { getTeams } from '@/lib/api/teams';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Supervisor, ProjectViewModel, WorkerViewModel, TeamViewModel } from '@/types';
-
-export const metadata = { title: 'Supervisors' };
+import { SkeletonCard } from '@/components/ui/skeleton';
+import { AlertTriangle } from 'lucide-react';
 
 function SupervisorCard({
   supervisor, projects, workers, teams,
@@ -78,10 +81,59 @@ function SupervisorCard({
   );
 }
 
-export default async function SupervisorsPage() {
-  const [supervisors, projects, workers, teams] = await Promise.all([
-    getSupervisors(), getProjects(), getWorkers(), getTeams(),
-  ]);
+export default function SupervisorsPage() {
+  const [data, setData] = useState<{
+    supervisors: Supervisor[],
+    projects: ProjectViewModel[],
+    workers: WorkerViewModel[],
+    teams: TeamViewModel[]
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [supervisors, projects, workers, teams] = await Promise.all([
+          getSupervisors(), getProjects(), getWorkers(), getTeams(),
+        ]);
+        setData({ supervisors, projects, workers, teams });
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to load data'));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-[1200px] mx-auto space-y-5">
+        <SkeletonCard className="h-24" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SkeletonCard className="h-64" />
+          <SkeletonCard className="h-64" />
+          <SkeletonCard className="h-64" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-[1200px] mx-auto">
+        <div className="bg-red-50 border border-red-100 p-8 rounded-xl text-center">
+          <AlertTriangle className="mx-auto text-red-500 mb-2" />
+          <p className="text-red-700 text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const { supervisors, projects, workers, teams } = data;
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5">

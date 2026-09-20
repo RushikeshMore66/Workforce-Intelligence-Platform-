@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Work Updates API module.
  * CRUD operations for WorkUpdate entities.

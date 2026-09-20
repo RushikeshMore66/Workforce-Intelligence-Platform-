@@ -1,5 +1,8 @@
-import { notFound } from 'next/navigation';
+'use client';
+
+import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getSupervisorById } from '@/lib/api/supervisors';
 import { getProjects } from '@/lib/api/projects';
 import { getWorkers } from '@/lib/api/workers';
@@ -9,23 +12,74 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ProjectHealthBadge } from '@/components/projects/ProjectHealthBadge';
 import { daysUntil } from '@/lib/utils';
-import { ArrowLeft, Mail, Users, FolderKanban } from 'lucide-react';
+import { ArrowLeft, Mail, Users, FolderKanban, AlertTriangle } from 'lucide-react';
+import { SkeletonCard } from '@/components/ui/skeleton';
+import { Supervisor, ProjectViewModel, WorkerViewModel, TeamViewModel } from '@/types';
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const s = await getSupervisorById(id);
-  return { title: s?.name ?? 'Supervisor' };
-}
-
-export default async function SupervisorDetailPage({
+export default function SupervisorDetailPage({
   params,
 }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const [supervisor, allProjects, allWorkers, allTeams] = await Promise.all([
-    getSupervisorById(id), getProjects(), getWorkers(), getTeams(),
-  ]);
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  const router = useRouter();
 
-  if (!supervisor) notFound();
+  const [data, setData] = useState<{
+    supervisor: Supervisor,
+    allProjects: ProjectViewModel[],
+    allWorkers: WorkerViewModel[],
+    allTeams: TeamViewModel[]
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const supervisor = await getSupervisorById(id);
+        if (!supervisor) {
+          router.push('/404');
+          return;
+        }
+        const [allProjects, allWorkers, allTeams] = await Promise.all([
+          getProjects(), getWorkers(), getTeams(),
+        ]);
+        setData({ supervisor, allProjects, allWorkers, allTeams });
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to load data'));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [id, router]);
+
+  if (loading) {
+    return (
+      <div className="max-w-[1100px] mx-auto space-y-5">
+        <SkeletonCard className="h-10" />
+        <SkeletonCard className="h-40" />
+        <div className="grid lg:grid-cols-2 gap-5">
+          <SkeletonCard className="h-96" />
+          <SkeletonCard className="h-96" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-[1100px] mx-auto">
+        <div className="bg-red-50 border border-red-100 p-8 rounded-xl text-center">
+          <AlertTriangle className="mx-auto text-red-500 mb-2" />
+          <p className="text-red-700 text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const { supervisor, allProjects, allWorkers, allTeams } = data;
 
   const supProjects = allProjects.filter(p => supervisor.projectIds.includes(p.id));
   const supWorkers = allWorkers.filter(w => w.supervisorId === id);
