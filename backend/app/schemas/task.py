@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
-from app.schemas.common import BaseSchema, TaskStatus, ProjectPriority
+
+from app.schemas.common import BaseSchema, ProjectPriority, TaskStatus
 
 
 class TaskBase(BaseSchema):
@@ -22,9 +23,13 @@ class TaskUpdate(BaseSchema):
     description: Optional[str] = None
     assignee_id: Optional[str] = None
     team_id: Optional[str] = None
-    status: Optional[TaskStatus] = None
     priority: Optional[ProjectPriority] = None
     due_date: Optional[date] = None
+
+
+class TaskStatusChange(BaseSchema):
+    status: TaskStatus
+    reason: Optional[str] = None
 
 
 class TaskOut(TaskBase):
