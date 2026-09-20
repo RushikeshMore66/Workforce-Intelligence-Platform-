@@ -27,10 +27,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 // ── Task Status Badge ──
 function TaskStatusBadge({ status }: { status: Task['status'] }) {
   const cfg = {
-    TODO:        { variant: 'default' as const,  label: 'To Do' },
+    PLANNED:     { variant: 'default' as const,  label: 'Planned' },
     IN_PROGRESS: { variant: 'primary' as const,  label: 'In Progress' },
+    ON_HOLD:     { variant: 'danger' as const,   label: 'On Hold' },
     COMPLETED:   { variant: 'success' as const,  label: 'Completed' },
-    BLOCKED:     { variant: 'danger'  as const,  label: 'Blocked' },
+    CANCELLED:   { variant: 'danger' as const,   label: 'Cancelled' },
   }[status];
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
@@ -148,8 +149,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const daysLeft = daysUntil(p.deadline);
   const completedTasks = tasks.data ? tasks.data.filter(t => t.status === 'COMPLETED').length : 0;
   const inProgressTasks = tasks.data ? tasks.data.filter(t => t.status === 'IN_PROGRESS').length : 0;
-  const pendingTasks = tasks.data ? tasks.data.filter(t => t.status === 'TODO').length : 0;
-  const blockedTasks = tasks.data ? tasks.data.filter(t => t.status === 'BLOCKED').length : 0;
+  const pendingTasks = tasks.data ? tasks.data.filter(t => t.status === 'PLANNED').length : 0;
+  const onHoldTasks = tasks.data ? tasks.data.filter(t => t.status === 'ON_HOLD').length : 0;
+  const cancelledTasks = tasks.data ? tasks.data.filter(t => t.status === 'CANCELLED').length : 0;
   const openBlockers = blockers.data ? blockers.data.filter(b => b.status === 'OPEN').length : 0;
 
   return (
@@ -250,7 +252,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 { label: 'Completed',      value: tasks.hasFetched ? completedTasks : '—',   color: 'text-[#027A48]' },
                 { label: 'In Progress',    value: tasks.hasFetched ? inProgressTasks : '—',  color: 'text-[#263B80]' },
                 { label: 'Pending',        value: tasks.hasFetched ? pendingTasks : '—',     color: 'text-[#667085]' },
-                { label: 'Blocked',        value: tasks.hasFetched ? blockedTasks : '—',     color: 'text-[#B42318]' },
+                { label: 'On Hold',        value: tasks.hasFetched ? onHoldTasks : '—',     color: 'text-[#B54708]' },
+                { label: 'Cancelled',      value: tasks.hasFetched ? cancelledTasks : '—', color: 'text-[#667085]' },
                 { label: 'Started',        value: formatDate(p.startDate), color: 'text-[#172033]' },
                 { label: 'Supervisor ID',  value: p.supervisorId ?? '—',       color: 'text-[#172033]' },
                 { label: 'Team Count',     value: p.teamCount ?? '—',      color: 'text-[#172033]' },
