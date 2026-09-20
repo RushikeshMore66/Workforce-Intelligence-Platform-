@@ -1,4 +1,6 @@
 import enum
+from typing import Generic, List, TypeVar
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -31,10 +33,11 @@ class ProjectPriority(str, enum.Enum):
 
 
 class TaskStatus(str, enum.Enum):
-    TODO = "TODO"
+    PLANNED = "PLANNED"
     IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
     COMPLETED = "COMPLETED"
-    BLOCKED = "BLOCKED"
+    CANCELLED = "CANCELLED"
 
 
 class BlockerStatus(str, enum.Enum):
@@ -60,14 +63,13 @@ class BaseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-from typing import TypeVar, Generic, List
+T = TypeVar("T")
 
-T = TypeVar('T')
 
 class PaginatedResponse(BaseModel, Generic[T]):
     items: List[T]
     page: int
     page_size: int
     total: int
-    
+
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
