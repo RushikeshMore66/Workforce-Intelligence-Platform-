@@ -6,13 +6,12 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.authorization.dependencies import RequirePermission
 from app.authorization.permissions import Permission
-from app.authorization.policies import authorize_task_access
+from app.authorization.policies import authorize_project_access, authorize_task_access
 from app.core.exceptions import PermissionDeniedException
 from app.database import get_db
 from app.models.activity import ActivityTypeEnum, ProjectActivity
 from app.models.task import Task, WorkUpdate
 from app.models.user import User, UserRoleEnum
-from app.repositories.task_repo import TaskRepository
 from app.schemas.task import (
     TaskCreate,
     TaskOut,
@@ -21,6 +20,7 @@ from app.schemas.task import (
     WorkUpdateCreate,
     WorkUpdateOut,
 )
+from app.services.project_progress_service import ProjectProgressService
 from app.services.task_workflow_service import TaskWorkflowService
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -41,10 +41,28 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(RequirePermission(Permission.TASK_CREATE)),
 ):
-    repo = TaskRepository(db)
+    # Task creation must stay inside a project the current user can access.
+    authorize_project_access(task_in.project_id, current_user, db)
+
     task_dict = task_in.model_dump()
     task_dict["id"] = f"task-{uuid.uuid4().hex[:6]}"
-    task = repo.create(task_dict)
+    task = Task(**task_dict)
+
+    activity = ProjectActivity(
+        id=f"act-task-created-{uuid.uuid4().hex[:10]}",
+        project_id=task.project_id,
+        description=f"Task '{task.title}' was created by {current_user.name}.",
+        user_id=current_user.id,
+        user_name=current_user.name,
+        type=ActivityTypeEnum.TASK_CREATED,
+    )
+
+    db.add(task)
+    db.add(activity)
+    ProjectProgressService.recalculate_project_progress(db, task.project_id)
+    db.commit()
+    db.refresh(task)
+
     return task
 
 
@@ -104,39 +122,12 @@ def change_task_status(
     Workers may transition their own assigned tasks only through legal
     transitions. Management roles can transition tasks inside their scope.
     """
-    task = authorize_task_access(task_id, current_user, db)
-
-    workflow = TaskWorkflowService(db)
-    updated_task = workflow.transition(
-        task_id=task.id,
+    return TaskWorkflowService(db).transition(
+        task_id=task_id,
         to_status=status_in.status,
         current_user=current_user,
         reason=status_in.reason,
     )
-
-    activity_type = (
-        ActivityTypeEnum.TASK_COMPLETED
-        if status_in.status.value == "COMPLETED"
-        else ActivityTypeEnum.TASK_STATUS_CHANGED
-    )
-
-    activity = ProjectActivity(
-        id=f"act-{uuid.uuid4().hex[:6]}",
-        project_id=updated_task.project_id,
-        description=(
-            f"Task '{updated_task.title}' changed from "
-            f"{task.status.value} to {updated_task.status.value} "
-            f"by {current_user.name}."
-        ),
-        user_id=current_user.id,
-        user_name=current_user.name,
-        type=activity_type,
-    )
-    db.add(activity)
-    db.commit()
-    db.refresh(updated_task)
-
-    return updated_task
 
 
 @router.post(
