@@ -70,9 +70,9 @@ class ProjectAnalyticsService:
         ).group_by(Task.status).all()
 
         counts = {status: count for status, count in status_counts}
-        todo = counts.get(TaskStatusEnum.TODO, 0)
+        todo = counts.get(TaskStatusEnum.PLANNED, 0)
         in_progress = counts.get(TaskStatusEnum.IN_PROGRESS, 0)
-        blocked = counts.get(TaskStatusEnum.BLOCKED, 0)
+        blocked = counts.get(TaskStatusEnum.ON_HOLD, 0)
         completed = counts.get(TaskStatusEnum.COMPLETED, 0)
         total = todo + in_progress + blocked + completed
 
@@ -139,7 +139,7 @@ class ProjectAnalyticsService:
             TaskTransition.task_id,
             func.min(TaskTransition.timestamp).label("started_at")
         ).filter(
-            TaskTransition.from_status == TaskStatusEnum.TODO,
+            TaskTransition.from_status == TaskStatusEnum.PLANNED,
             TaskTransition.to_status == TaskStatusEnum.IN_PROGRESS
         ).group_by(TaskTransition.task_id).cte("started_cte")
 
