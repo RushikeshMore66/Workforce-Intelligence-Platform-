@@ -1,6 +1,11 @@
 import { ProjectPriority } from './project';
 
-export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
+export type TaskStatus =
+  | 'PLANNED'
+  | 'IN_PROGRESS'
+  | 'ON_HOLD'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export interface Task {
   id: string;
@@ -26,6 +31,9 @@ export interface CreateTaskInput {
   dueDate: string;
 }
 
-export interface UpdateTaskInput extends Partial<CreateTaskInput> {
-  status?: TaskStatus;
+export interface UpdateTaskInput extends Partial<CreateTaskInput> {}
+
+export interface ChangeTaskStatusInput {
+  status: TaskStatus;
+  reason?: string;
 }
