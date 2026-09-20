@@ -1,6 +1,7 @@
 from datetime import date, datetime
-from typing import Optional, List
-from app.schemas.common import BaseSchema, ProjectStatus, ProjectHealth, ProjectPriority
+from typing import List, Optional
+
+from app.schemas.common import BaseSchema, ProjectHealth, ProjectPriority, ProjectStatus
 
 
 class ProjectBase(BaseSchema):
@@ -25,9 +26,14 @@ class ProjectUpdate(BaseSchema):
     deadline: Optional[date] = None
     priority: Optional[ProjectPriority] = None
     supervisor_id: Optional[str] = None
-    status: Optional[ProjectStatus] = None
     health: Optional[ProjectHealth] = None
-    progress: Optional[int] = None
+    # Project status and progress are workflow/derived fields.
+    # They must not be directly patched from the generic update endpoint.
+
+
+class ProjectStatusChange(BaseSchema):
+    status: ProjectStatus
+    reason: Optional[str] = None
 
 
 class ProjectOut(ProjectBase):
