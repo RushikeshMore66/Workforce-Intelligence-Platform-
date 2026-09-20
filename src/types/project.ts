@@ -43,7 +43,10 @@ export interface UpdateProjectInput {
   deadline?: string;
   priority?: ProjectPriority;
   supervisorId?: string | null;
-  status?: ProjectStatus;
   health?: ProjectHealth;
-  progress?: number;
+}
+
+export interface ChangeProjectStatusInput {
+  status: ProjectStatus;
+  reason?: string;
 }
