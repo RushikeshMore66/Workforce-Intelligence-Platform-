@@ -1,10 +1,11 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, Briefcase,
   BarChart3, FileText, Lightbulb, Bell, Settings, Building2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/useAuth';
@@ -16,31 +17,32 @@ const NAV_GROUPS = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard',    href: '/dashboard',    icon: LayoutDashboard },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Work', href: '/my-work', icon: ClipboardCheck },
     ],
   },
   {
     label: 'Management',
     items: [
-      { label: 'Projects',    href: '/projects',     icon: FolderKanban },
-      { label: 'Supervisors', href: '/supervisors',  icon: Briefcase },
-      { label: 'Teams',       href: '/teams',        icon: UsersRound },
-      { label: 'Workforce',   href: '/workforce',    icon: Users },
+      { label: 'Projects', href: '/projects', icon: FolderKanban },
+      { label: 'Supervisors', href: '/supervisors', icon: Briefcase },
+      { label: 'Teams', href: '/teams', icon: UsersRound },
+      { label: 'Workforce', href: '/workforce', icon: Users },
     ],
   },
   {
     label: 'Insights',
     items: [
-      { label: 'Analytics',   href: '/analytics',   icon: BarChart3 },
-      { label: 'Reports',     href: '/reports',     icon: FileText },
-      { label: 'Intelligence',href: '/intelligence',icon: Lightbulb },
+      { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+      { label: 'Reports', href: '/reports', icon: FileText },
+      { label: 'Intelligence', href: '/intelligence', icon: Lightbulb },
     ],
   },
   {
     label: 'System',
     items: [
-      { label: 'Notifications',href: '/notifications',icon: Bell },
-      { label: 'Settings',    href: '/settings',    icon: Settings },
+      { label: 'Notifications', href: '/notifications', icon: Bell },
+      { label: 'Settings', href: '/settings', icon: Settings },
     ],
   },
 ];
@@ -60,14 +62,14 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
   };
 
   return (
-    <aside
-      className={cn(
-        'flex flex-col h-full bg-[#151E38] text-white transition-[width] duration-300 flex-shrink-0',
-        collapsed ? 'w-16' : 'w-[220px]'
-      )}
-    >
-      {/* Logo */}
-      <div className={cn('flex items-center h-14 border-b border-white/8 flex-shrink-0', collapsed ? 'justify-center px-3' : 'px-5')}>
+    <aside className={cn(
+      'flex flex-col h-full bg-[#151E38] text-white transition-[width] duration-300 flex-shrink-0',
+      collapsed ? 'w-16' : 'w-[220px]'
+    )}>
+      <div className={cn(
+        'flex items-center h-14 border-b border-white/8 flex-shrink-0',
+        collapsed ? 'justify-center px-3' : 'px-5'
+      )}>
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-7 h-7 rounded-md bg-[#263B80] flex items-center justify-center flex-shrink-0">
             <Building2 className="w-4 h-4 text-white" />
@@ -81,11 +83,9 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
         {NAV_GROUPS.map(group => {
-          // Filter items based on user's role
-          const visibleItems = group.items.filter(item => 
+          const visibleItems = group.items.filter(item =>
             canAccessSection(currentUser?.role, item.href)
           );
 
@@ -125,7 +125,6 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Collapse toggle */}
       <div className="px-2 pb-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -141,7 +140,6 @@ export function Sidebar({ onMobileClose }: SidebarProps) {
         </button>
       </div>
 
-      {/* User */}
       {currentUser && (
         <div className={cn('border-t border-white/8 px-3 py-3 flex-shrink-0', collapsed && 'px-2')}>
           <div className={cn('flex items-center gap-2.5', collapsed && 'justify-center')}>
