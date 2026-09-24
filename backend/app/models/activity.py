@@ -31,6 +31,9 @@ class ActivityTypeEnum(str, enum.Enum):
 
     USER_CREATED = "USER_CREATED"
     USER_UPDATED = "USER_UPDATED"
+    USER_ACTIVATED = "USER_ACTIVATED"
+    USER_DEACTIVATED = "USER_DEACTIVATED"
+    PASSWORD_CHANGED = "PASSWORD_CHANGED"
 
 
 class ProjectActivity(Base):

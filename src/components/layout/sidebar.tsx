@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, Briefcase,
   BarChart3, FileText, Lightbulb, Bell, Settings, Building2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/useAuth';
@@ -41,6 +41,12 @@ const NAV_GROUPS = [
     items: [
       { label: 'Notifications',href: '/notifications',icon: Bell },
       { label: 'Settings',    href: '/settings',    icon: Settings },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { label: 'User Management', href: '/admin', icon: Shield },
     ],
   },
 ];

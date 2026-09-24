@@ -44,6 +44,7 @@ def setup_database():
         role=UserRoleEnum.OWNER,
         company="Apex Software Solutions",
         avatar_initials="RM",
+        is_active=True,
     )
     db.add(owner)
     db.commit()

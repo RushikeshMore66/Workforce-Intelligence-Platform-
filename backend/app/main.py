@@ -20,6 +20,7 @@ from app.routers import (
     supervisors_router,
     tasks_router,
     teams_router,
+    users_router,
     workers_router,
 )
 from app.routers.metrics import router as metrics_router
@@ -284,6 +285,7 @@ app.include_router(metrics_router)
 
 
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(projects_router, prefix=settings.API_V1_STR)
 app.include_router(workers_router, prefix=settings.API_V1_STR)

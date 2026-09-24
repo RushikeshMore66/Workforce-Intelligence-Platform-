@@ -1,27 +1,70 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
- * Users API module.
+ * Users Management API module.
  *
- * In mock mode: reads from an empty set or relies on mock auth.
- * In API mode: backend endpoints NOT AVAILABLE yet.
+ * Owner-only endpoints for managing user accounts and profiles.
+ * All endpoints require authentication; OWNER role is enforced at the backend.
  */
 
-import { User } from '@/types';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
+import {
+  ManagedUser,
+  CreateUserPayload,
+  UpdateUserPayload,
+} from '@/types';
+import { apiClient } from './client';
 
 /**
- * @deprecated Backend endpoint GET /users is NOT AVAILABLE yet.
+ * List all users in the organisation.
+ * Requires OWNER role (enforced by backend).
  */
-export async function getUsers(): Promise<User[]> {
-  if (USE_MOCK) return []; // Mock logic to be added if UI requires it
-  throw new Error('Not implemented in backend');
+export async function getUsers(): Promise<ManagedUser[]> {
+  return apiClient.get<ManagedUser[]>('/users');
 }
 
 /**
- * @deprecated Backend endpoint GET /users/:id is NOT AVAILABLE yet.
+ * Get a specific user by ID.
+ * Requires OWNER role (enforced by backend).
  */
-export async function getUserById(_id: string): Promise<User | null> {
-  if (USE_MOCK) return null; // Mock logic to be added if UI requires it
-  throw new Error('Not implemented in backend');
+export async function getUserById(id: string): Promise<ManagedUser> {
+  return apiClient.get<ManagedUser>(`/users/${id}`);
+}
+
+/**
+ * Create a new user with the appropriate role profile.
+ * Requires OWNER role (enforced by backend).
+ *
+ * The backend validates:
+ * - Duplicate email (409)
+ * - Role cannot be OWNER (403)
+ * - WORKER requires worker_profile (400)
+ * - Team/leader/supervisor relationships (400)
+ * - Password minimum length (422)
+ */
+export async function createUser(data: CreateUserPayload): Promise<ManagedUser> {
+  return apiClient.post<ManagedUser>('/users', data);
+}
+
+/**
+ * Update allowed fields on a user.
+ * Requires OWNER role (enforced by backend).
+ */
+export async function updateUser(id: string, data: UpdateUserPayload): Promise<ManagedUser> {
+  return apiClient.patch<ManagedUser>(`/users/${id}`, data);
+}
+
+/**
+ * Activate a deactivated user account.
+ * Requires OWNER role (enforced by backend).
+ */
+export async function activateUser(id: string): Promise<ManagedUser> {
+  return apiClient.post<ManagedUser>(`/users/${id}/activate`);
+}
+
+/**
+ * Deactivate an active user account (prevents login).
+ * This is NOT deletion — data is preserved.
+ * Cannot deactivate yourself.
+ * Requires OWNER role (enforced by backend).
+ */
+export async function deactivateUser(id: string): Promise<ManagedUser> {
+  return apiClient.post<ManagedUser>(`/users/${id}/deactivate`);
 }

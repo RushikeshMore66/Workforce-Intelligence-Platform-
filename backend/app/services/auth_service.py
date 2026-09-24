@@ -16,4 +16,8 @@ class AuthService:
             return None
         if not verify_password(login_data.password, user.hashed_password):
             return None
+        # Deactivated accounts must not be able to obtain a token.
+        # Return None (same shape as wrong-password) to avoid leaking account existence.
+        if not user.is_active:
+            return None
         return create_jwt_token(user_id=user.id, role=user.role.value)

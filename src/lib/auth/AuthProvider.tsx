@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType } from './types';
-import { User, LoginCredentials } from '@/types';
+import { User, LoginCredentials, UpdateProfilePayload, ChangePasswordPayload } from '@/types';
 import * as authApi from '@/lib/api/auth';
 import { setUnauthorizedCallback } from '@/lib/api/client';
 
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   useEffect(() => {
-    // Register global 401 handler
+    // Register global 401 handler — clears user state on token expiry/deactivation
     setUnauthorizedCallback(() => {
       authApi.logout();
       setUser(null);
@@ -56,6 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: UpdateProfilePayload) => {
+    const updatedUser = await authApi.updateProfile(data);
+    setUser(updatedUser);
+  };
+
+  const changePassword = async (data: ChangePasswordPayload) => {
+    await authApi.changePassword(data);
+    // No user state change required — password change doesn't affect user claims
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
@@ -63,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     refreshUser,
+    updateProfile,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,0 +1,12 @@
+Metric,Value
+total_workers,3
+active_workers,2
+total_teams,2
+total_projects,3
+active_projects,0
+total_tasks,6
+completed_tasks,1
+completion_rate,0.16666666666666666
+overdue_tasks,2
+blocked_tasks,1
+unassigned_tasks,2

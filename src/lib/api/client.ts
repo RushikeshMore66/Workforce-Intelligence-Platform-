@@ -14,7 +14,6 @@
  */
 
 import { toCamelCase } from './mappers';
-import { getStoredToken } from '../auth/storage';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/v1`;
 
@@ -30,10 +29,10 @@ export function setUnauthorizedCallback(callback: UnauthorizedCallback) {
 /**
  * Abstraction point for Phase 4 authentication.
  * Services should not know where tokens are stored.
+ * Token is now stored securely in an HttpOnly cookie so the browser handles it automatically.
  */
 export function getAuthHeaders(): Record<string, string> {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {};
 }
 
 // ── Error class ──────────────────────────────────────────────
@@ -95,6 +94,7 @@ async function request<T>({ method, path, body, params, signal }: RequestConfig)
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: fetchSignal,
+      credentials: 'include',
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {

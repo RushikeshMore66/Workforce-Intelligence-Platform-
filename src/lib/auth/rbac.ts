@@ -25,11 +25,12 @@ export const PAGE_PERMISSIONS: Record<string, UserRole[]> = {
   '/supervisors': [ROLES.OWNER],
   '/teams': [ROLES.OWNER, ROLES.SUPERVISOR, ROLES.TEAM_LEADER], // WORKER accesses team info elsewhere
   '/workforce': [ROLES.OWNER, ROLES.SUPERVISOR, ROLES.TEAM_LEADER, ROLES.WORKER],
-  '/analytics': [ROLES.OWNER], 
+  '/analytics': [ROLES.OWNER, ROLES.SUPERVISOR],
   '/reports': [ROLES.OWNER],
   '/intelligence': [ROLES.OWNER],
   '/notifications': [ROLES.OWNER, ROLES.SUPERVISOR, ROLES.TEAM_LEADER, ROLES.WORKER],
   '/settings': [ROLES.OWNER, ROLES.SUPERVISOR, ROLES.TEAM_LEADER, ROLES.WORKER],
+  '/admin': [ROLES.OWNER], // User management — owner only
 };
 
 /**

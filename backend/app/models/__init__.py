@@ -7,6 +7,7 @@ from app.models.activity import ProjectActivity, ActivityTypeEnum
 from app.models.notification import Notification, NotificationTypeEnum, NotificationPriorityEnum
 from app.models.report_schedule import ReportSchedule, ReportTypeEnum, ReportFormatEnum, ReportFrequencyEnum
 from app.models.report_run import ReportRun, ReportRunStatusEnum
+from app.models.user_audit import UserAuditLog, UserAuditEventEnum
 
 __all__ = [
     "User",
@@ -37,4 +38,6 @@ __all__ = [
     "ReportFrequencyEnum",
     "ReportRun",
     "ReportRunStatusEnum",
+    "UserAuditLog",
+    "UserAuditEventEnum",
 ]

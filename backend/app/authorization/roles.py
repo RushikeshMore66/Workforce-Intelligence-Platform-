@@ -75,7 +75,8 @@ ROLE_PERMISSIONS = {
         Permission.TASK_DELETE,
         Permission.REPORT_VIEW,
         Permission.REPORT_EXPORT,
-        Permission.ANALYTICS_VIEW,
+        # ANALYTICS_VIEW intentionally excluded — team leaders see per-team data
+        # through project/task scoping, not org-level analytics dashboards.
     },
     UserRoleEnum.WORKER: {
         Permission.ORGANIZATION_VIEW,
@@ -86,6 +87,7 @@ ROLE_PERMISSIONS = {
         Permission.TASK_VIEW,
         Permission.TASK_UPDATE,
         Permission.REPORT_VIEW, # Limited to own data
-        Permission.ANALYTICS_VIEW, # Limited
+        # ANALYTICS_VIEW intentionally excluded — workers access their own task data
+        # through the workforce view, not org-level analytics dashboards.
     },
 }

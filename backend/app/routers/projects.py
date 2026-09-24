@@ -87,7 +87,7 @@ def get_project(
 def create_project(
     project_in: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    current_user: User = Depends(RequirePermission(Permission.PROJECT_CREATE)),
 ):
     service = ProjectService(db)
     return service.create_project(project_in, current_user_name=current_user.name)

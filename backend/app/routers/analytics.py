@@ -14,7 +14,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 @router.get("", response_model=AnalyticsDataOut)
 def get_analytics(
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.ANALYTICS_VIEW)),
 ):
     """Retrieve analytics data. Restricted to OWNER and SUPERVISOR roles."""
     service = AnalyticsService(db)

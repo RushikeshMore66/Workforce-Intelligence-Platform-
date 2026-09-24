@@ -1,7 +1,7 @@
 from datetime import datetime
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -35,6 +35,10 @@ class User(Base):
     )
     avatar_initials = Column(String(5), nullable=False)
     company = Column(String, nullable=True)
+    # Account lifecycle: True = active (can login), False = deactivated (cannot login).
+    # Default True so all existing and new users start active.
+    # This is distinct from Worker.status which tracks operational availability.
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime,
