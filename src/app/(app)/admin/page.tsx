@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getUsers, activateUser, deactivateUser } from '@/lib/api/users';
 import { ManagedUser } from '@/types';
 import { useAuth } from '@/lib/auth/useAuth';
+import { ApiRequestError } from '@/lib/api/client';
+import { CreateUserModal } from '@/components/admin/CreateUserModal';
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -11,28 +13,39 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
     try {
-      setIsLoading(true);
-      setError('');
       const data = await getUsers();
       setUsers(data);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load users.');
+    } catch (err: unknown) {
+      if (err instanceof ApiRequestError) {
+        if (err.status === 401) {
+          setError('Your session has expired. Please log in again.');
+        } else if (err.status === 403) {
+          setError('Access denied. Only Owners can view user management.');
+        } else {
+          setError('Failed to load users. Please try again.');
+        }
+      } else {
+        setError('Failed to load users. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchUsers();
   }, []);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUsers();
+  }, [fetchUsers]);
+
   const handleToggleStatus = async (user: ManagedUser) => {
-    if (user.id === currentUser?.id) return; // Cannot toggle self
-    
+    if (user.id === currentUser?.id) return;
+
     setActionLoadingId(user.id);
     try {
       if (user.isActive) {
@@ -40,10 +53,10 @@ export default function AdminUsersPage() {
       } else {
         await activateUser(user.id);
       }
-      await fetchUsers(); // Refresh the list
-    } catch (err) {
-      console.error('Failed to toggle user status', err);
-      alert('Failed to change user status. Please try again.');
+      await fetchUsers();
+    } catch (err: unknown) {
+      const msg = err instanceof ApiRequestError ? err.message : 'Failed to change user status.';
+      setError(msg || 'Failed to change user status. Please try again.');
     } finally {
       setActionLoadingId(null);
     }
@@ -59,11 +72,24 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="wi-page-title">User Management</h1>
-        <p className="text-sm text-[#667085] mt-0.5">
-          Manage system access and account lifecycle for all users.
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="wi-page-title">User Management</h1>
+          <p className="text-sm text-[#667085] mt-0.5">
+            Manage system access and account lifecycle for all users.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 bg-[#263B80] hover:bg-[#1a2a5e] text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+          id="create-user-btn"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Create User
+        </button>
       </div>
 
       {error && (
@@ -72,6 +98,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Users table */}
       <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-[#344054]">
@@ -100,7 +127,7 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] text-[#374151]">
-                      {u.role.replace('_', ' ')}
+                      {u.role.replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -150,7 +177,7 @@ export default function AdminUsersPage() {
               {users.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-sm text-[#667085]">
-                    No users found.
+                    No users found. Use the &quot;Create User&quot; button to provision the first account.
                   </td>
                 </tr>
               )}
@@ -158,6 +185,14 @@ export default function AdminUsersPage() {
           </table>
         </div>
       </div>
+
+      {/* Create user modal */}
+      {showCreateModal && (
+        <CreateUserModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={fetchUsers}
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   UpdateUserPayload,
 } from '@/types';
 import { apiClient } from './client';
+import { toSnakeCase } from './mappers';
 
 /**
  * List all users in the organisation.
@@ -40,7 +41,8 @@ export async function getUserById(id: string): Promise<ManagedUser> {
  * - Password minimum length (422)
  */
 export async function createUser(data: CreateUserPayload): Promise<ManagedUser> {
-  return apiClient.post<ManagedUser>('/users', data);
+  // Backend expects snake_case; transform camelCase payload before sending.
+  return apiClient.post<ManagedUser>('/users', toSnakeCase(data));
 }
 
 /**
@@ -48,7 +50,7 @@ export async function createUser(data: CreateUserPayload): Promise<ManagedUser> 
  * Requires OWNER role (enforced by backend).
  */
 export async function updateUser(id: string, data: UpdateUserPayload): Promise<ManagedUser> {
-  return apiClient.patch<ManagedUser>(`/users/${id}`, data);
+  return apiClient.patch<ManagedUser>(`/users/${id}`, toSnakeCase(data));
 }
 
 /**

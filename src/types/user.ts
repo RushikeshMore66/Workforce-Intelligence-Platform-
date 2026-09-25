@@ -92,9 +92,9 @@ export interface TeamLeaderProfileCreate {
   teamId?: string;
 }
 
-export interface SupervisorProfileCreate {
-  // Reserved for future expansion
-}
+// SupervisorProfileCreate has no additional fields beyond the user association.
+// Declared as a record type (not interface) to satisfy the no-empty-object-type rule.
+export type SupervisorProfileCreate = Record<string, never>;
 
 export interface CreateUserPayload {
   email: string;
