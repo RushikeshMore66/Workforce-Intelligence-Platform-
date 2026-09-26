@@ -210,6 +210,7 @@ class OrganizationAnalyticsService:
 
     def _get_attention_metrics(self, cutoff_7: datetime, workload: OrganizationWorkloadMetrics) -> OrganizationAttentionMetrics:
         # ON_HOLD replaces the old BLOCKED concept — tasks waiting on something
+        overdue_tasks = workload.overdue
         on_hold_tasks = workload.on_hold
         unassigned_tasks = workload.unassigned
 

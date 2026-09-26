@@ -28,7 +28,7 @@ router = APIRouter(prefix="/reports", tags=["Report Scheduling"])
 def create_schedule(
     data: ReportScheduleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    current_user: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).create_schedule(data, current_user.id)
 
@@ -39,7 +39,7 @@ def create_schedule(
 )
 def list_schedules(
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).list_schedules()
 
@@ -51,7 +51,7 @@ def list_schedules(
 def get_schedule(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).get_schedule(schedule_id)
 
@@ -64,7 +64,7 @@ def update_schedule(
     schedule_id: str,
     data: ReportScheduleUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).update_schedule(schedule_id, data)
 
@@ -76,7 +76,7 @@ def update_schedule(
 def delete_schedule(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     ReportScheduleService(db).delete_schedule(schedule_id)
 
@@ -88,7 +88,7 @@ def delete_schedule(
 def pause_schedule(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).pause_schedule(schedule_id)
 
@@ -100,7 +100,7 @@ def pause_schedule(
 def resume_schedule(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportScheduleService(db).resume_schedule(schedule_id)
 
@@ -112,7 +112,7 @@ def resume_schedule(
 def list_schedule_runs(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportRunService(db).list_schedule_runs(schedule_id)
 
@@ -124,7 +124,7 @@ def list_schedule_runs(
 def get_run(
     run_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     return ReportRunService(db).get_run(run_id)
 
@@ -137,7 +137,7 @@ def get_run(
 def run_now(
     schedule_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     schedule = ReportScheduleService(db).get_schedule(schedule_id)
     from fastapi import HTTPException
@@ -158,7 +158,7 @@ def run_now(
 def download_run(
     run_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     from fastapi import HTTPException
     from fastapi.responses import FileResponse
