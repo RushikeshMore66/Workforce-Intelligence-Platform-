@@ -57,7 +57,7 @@ def tasks(db_session, worker):
     db_session.add(project)
     db_session.commit()
     
-    task1 = Task(id=f"t1-{suffix}", project_id=project.id, title="T1", assignee_id=worker.id, status=TaskStatusEnum.TODO, due_date=date.today() + timedelta(days=5))
+    task1 = Task(id=f"t1-{suffix}", project_id=project.id, title="T1", assignee_id=worker.id, status=TaskStatusEnum.PLANNED, due_date=date.today() + timedelta(days=5))
     task2 = Task(id=f"t2-{suffix}", project_id=project.id, title="T2", assignee_id=worker.id, status=TaskStatusEnum.IN_PROGRESS, due_date=date.today() - timedelta(days=1))
     
     db_session.add_all([task1, task2])
@@ -97,7 +97,7 @@ def transitions(db_session, tasks):
     tr = TaskTransition(
         id=f"tr-{suffix}",
         task_id=task.id,
-        from_status=TaskStatusEnum.TODO,
+        from_status=TaskStatusEnum.PLANNED,
         to_status=TaskStatusEnum.IN_PROGRESS,
         timestamp=datetime.utcnow() - timedelta(days=2)
     )
@@ -120,3 +120,4 @@ def test_activity_metrics(db_session, worker, work_updates):
 def test_delivery_metrics(db_session, worker, tasks, transitions):
     # cycle time checks
     pass
+

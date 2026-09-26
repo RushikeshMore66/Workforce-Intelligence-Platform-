@@ -96,3 +96,4 @@ def test_boolean_parsing():
     )
     assert settings.REPORT_SCHEDULER_ENABLED is True
     assert settings.TRUSTED_HOST_ENABLED is True
+

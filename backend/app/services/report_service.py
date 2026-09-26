@@ -5,7 +5,7 @@ Design principles:
 - All metrics computed via SQL GROUP BY / CASE / CTEs — no Python iteration over ORM collections.
 - UTC datetime used for all comparisons.
 - NULL created_by_user_id excluded from both authored categories.
-- Cycle time: first TODO→IN_PROGRESS start, first *→COMPLETED end, only completed tasks,
+- Cycle time: first PLANNED→IN_PROGRESS start, first *→COMPLETED end, only completed tasks,
   average returned in hours.
 - completion_rate = completed / total, 0.0 when total == 0.
 """
@@ -37,7 +37,7 @@ def _cycle_time_hours(db: Session, task_filter) -> Optional[float]:
     Compute average cycle time in hours for a set of tasks identified by `task_filter`
     (a SQLAlchemy column expression applied to Task).
 
-    Only COMPLETED tasks with both a TODO→IN_PROGRESS start and a *→COMPLETED
+    Only COMPLETED tasks with both a PLANNED→IN_PROGRESS start and a *→COMPLETED
     end transition contribute to the average. Tasks missing either timestamp are excluded.
     """
     started_cte = (
@@ -46,7 +46,7 @@ def _cycle_time_hours(db: Session, task_filter) -> Optional[float]:
             func.min(TaskTransition.timestamp).label("started_at"),
         )
         .filter(
-            TaskTransition.from_status == TaskStatusEnum.TODO,
+            TaskTransition.from_status == TaskStatusEnum.PLANNED,
             TaskTransition.to_status == TaskStatusEnum.IN_PROGRESS,
         )
         .group_by(TaskTransition.task_id)
@@ -110,11 +110,11 @@ class ReportService:
         task_stats = self.db.query(
             func.count(Task.id).label("total"),
             func.sum(case((Task.status == TaskStatusEnum.COMPLETED, 1), else_=0)).label("completed"),
-            func.sum(case((Task.status == TaskStatusEnum.BLOCKED, 1), else_=0)).label("blocked"),
+            func.sum(case((Task.status == TaskStatusEnum.ON_HOLD, 1), else_=0)).label("on_hold"),
         ).first()
         total_tasks = task_stats.total or 0
         completed_tasks = int(task_stats.completed or 0)
-        blocked_tasks = int(task_stats.blocked or 0)
+        blocked_tasks = int(task_stats.on_hold or 0)  # report field kept as blocked_tasks for backward compat
         completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0.0
 
         overdue_tasks = (
@@ -154,11 +154,11 @@ class ReportService:
             .group_by(Task.status)
             .all()
         )
-        todo = status_counts.get(TaskStatusEnum.TODO, 0)
+        planned = status_counts.get(TaskStatusEnum.PLANNED, 0)
         in_progress = status_counts.get(TaskStatusEnum.IN_PROGRESS, 0)
-        blocked = status_counts.get(TaskStatusEnum.BLOCKED, 0)
+        on_hold = status_counts.get(TaskStatusEnum.ON_HOLD, 0)
         completed = status_counts.get(TaskStatusEnum.COMPLETED, 0)
-        total = todo + in_progress + blocked + completed
+        total = planned + in_progress + on_hold + completed
 
         overdue = (
             self.db.query(func.count(Task.id))
@@ -189,9 +189,9 @@ class ReportService:
             project_status=project.status.value,
             project_health=project.health.value,
             total_tasks=total,
-            todo_tasks=todo,
+            todo_tasks=planned,
             in_progress_tasks=in_progress,
-            blocked_tasks=blocked,
+            blocked_tasks=on_hold,
             completed_tasks=completed,
             overdue_tasks=overdue,
             unassigned_tasks=unassigned,
@@ -252,14 +252,14 @@ class ReportService:
             self.db.query(
                 func.count(Task.id).label("total"),
                 func.sum(case((Task.status == TaskStatusEnum.COMPLETED, 1), else_=0)).label("completed"),
-                func.sum(case((Task.status == TaskStatusEnum.BLOCKED, 1), else_=0)).label("blocked"),
+                func.sum(case((Task.status == TaskStatusEnum.ON_HOLD, 1), else_=0)).label("on_hold"),
             )
             .filter(Task.assignee_id == wid)
             .first()
         )
         total_tasks = task_stats.total or 0
         completed_tasks = int(task_stats.completed or 0)
-        blocked_tasks = int(task_stats.blocked or 0)
+        blocked_tasks = int(task_stats.on_hold or 0)  # report field kept as blocked_tasks for backward compat
         completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0.0
 
         overdue_tasks = (
@@ -364,14 +364,14 @@ class ReportService:
             self.db.query(
                 func.count(Task.id).label("total"),
                 func.sum(case((Task.status == TaskStatusEnum.COMPLETED, 1), else_=0)).label("completed"),
-                func.sum(case((Task.status == TaskStatusEnum.BLOCKED, 1), else_=0)).label("blocked"),
+                func.sum(case((Task.status == TaskStatusEnum.ON_HOLD, 1), else_=0)).label("on_hold"),
             )
             .filter(Task.assignee_id.in_(worker_ids_sq))
             .first()
         )
         total_tasks = task_stats.total or 0
         completed_tasks = int(task_stats.completed or 0)
-        blocked_tasks = int(task_stats.blocked or 0)
+        blocked_tasks = int(task_stats.on_hold or 0)  # report field kept as blocked_tasks for backward compat
         completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0.0
 
         overdue_tasks = (

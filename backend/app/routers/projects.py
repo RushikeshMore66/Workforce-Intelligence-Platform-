@@ -1,8 +1,9 @@
 from typing import List, Optional
+import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
+from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectStatusChange
 from app.schemas.task import TaskOut
 from app.schemas.blocker import BlockerOut
 from app.schemas.activity import ActivityOut
@@ -10,10 +11,12 @@ from app.schemas.analytics import ProjectAnalyticsOut
 from app.schemas.common import ProjectStatus, ProjectHealth, ProjectPriority
 from app.services.project_service import ProjectService
 from app.services.project_analytics_service import ProjectAnalyticsService
+from app.services.project_progress_service import ProjectProgressService
+from app.services.project_workflow_service import ProjectWorkflowService
 from app.repositories.task_repo import TaskRepository
 from app.repositories.blocker_repo import BlockerRepository
-from app.models.activity import ProjectActivity
-from app.models.project import Project
+from app.models.activity import ProjectActivity, ActivityTypeEnum
+from app.models.project import Project, ProjectStatusEnum
 from app.models.user import User, UserRoleEnum, Supervisor, TeamLeader, Worker
 from app.auth.dependencies import get_current_user
 from app.authorization.dependencies import RequirePermission
@@ -22,6 +25,7 @@ from app.authorization.policies import (authorize_project_access,
     _get_supervisor_profile,
     _get_team_leader_profile,
     _get_worker_profile,)
+from app.core.exceptions import PermissionDeniedException
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -98,13 +102,84 @@ def update_project(
     project_id: str,
     project_in: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    current_user: User = Depends(get_current_user),
 ):
-    """Update a project. SUPERVISOR may only update projects assigned to them."""
-    # Raises 403 if the supervisor is not assigned to this project
+    """Update project metadata. SUPERVISOR may only update their own projects."""
     authorize_project_access(project_id, current_user, db)
+
+    if current_user.role not in {
+        UserRoleEnum.OWNER,
+        UserRoleEnum.SUPERVISOR,
+    }:
+        raise PermissionDeniedException(
+            "Only owners and supervisors can edit project details."
+        )
+
     service = ProjectService(db)
     return service.update_project(project_id, project_in)
+
+
+@router.post("/{project_id}/status", response_model=ProjectOut)
+def change_project_status(
+    project_id: str,
+    status_in: ProjectStatusChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change project lifecycle status through the workflow engine.
+
+    Validates the transition against the canonical state machine:
+      PLANNED → ACTIVE | CANCELLED
+      ACTIVE → ON_HOLD | COMPLETED | CANCELLED
+      ON_HOLD → ACTIVE | CANCELLED
+
+    Only OWNER and SUPERVISOR roles may call this endpoint.
+    Only OWNER may cancel a project.
+    ON_HOLD and CANCELLED require a non-empty reason.
+    COMPLETED requires all non-cancelled tasks to be completed.
+    """
+    project = authorize_project_access(project_id, current_user, db)
+
+    # Refresh derived progress before evaluating completion.
+    ProjectProgressService.recalculate_project_progress(db, project.id)
+    db.refresh(project)
+
+    target_status = ProjectStatusEnum(status_in.status.value)
+    ProjectWorkflowService.validate_transition(
+        project=project,
+        to_status=target_status,
+        user=current_user,
+        db=db,
+        reason=status_in.reason,
+    )
+
+    old_status = project.status
+    project.status = target_status
+
+    activity = ProjectActivity(
+        id=f"act-project-status-{uuid.uuid4().hex[:10]}",
+        project_id=project.id,
+        description=(
+            f"Project '{project.name}' changed from "
+            f"{old_status.value} to {project.status.value} "
+            f"by {current_user.name}."
+            + (
+                f" Reason: {status_in.reason.strip()}"
+                if status_in.reason
+                else ""
+            )
+        ),
+        user_id=current_user.id,
+        user_name=current_user.name,
+        type=ActivityTypeEnum.PROJECT_STATUS_CHANGED,
+    )
+
+    db.add(project)
+    db.add(activity)
+    db.commit()
+    db.refresh(project)
+
+    return project
 
 
 @router.get("/{project_id}/tasks", response_model=List[TaskOut])

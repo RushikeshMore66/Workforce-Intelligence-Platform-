@@ -71,3 +71,4 @@ def test_get_me_with_invalid_token(client):
         headers={"Authorization": "Bearer this.is.not.a.valid.token"},
     )
     assert response.status_code == 401
+

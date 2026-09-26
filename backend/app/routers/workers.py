@@ -34,8 +34,8 @@ def _compute_task_counts(worker_id: str, db: Session) -> dict:
     return {
         "completed": counts.get(TaskStatusEnum.COMPLETED, 0),
         "in_progress": counts.get(TaskStatusEnum.IN_PROGRESS, 0),
-        "pending": counts.get(TaskStatusEnum.TODO, 0),
-        "blocked": counts.get(TaskStatusEnum.BLOCKED, 0),
+        "pending": counts.get(TaskStatusEnum.PLANNED, 0),
+        "blocked": counts.get(TaskStatusEnum.ON_HOLD, 0),
     }
 
 

@@ -32,3 +32,4 @@ def test_stale_recovery_is_observable():
     """Verify stale recovery metrics are recommended."""
     content = get_audit_file().read_text()
     assert "workforce_scheduler_jobs_recovered_total" in content
+

@@ -45,3 +45,4 @@ def test_hsts_header_on_https():
     response = client.get("/api/v1/health/live", headers={"x-forwarded-proto": "https"})
     assert "Strict-Transport-Security" in response.headers
     assert response.headers["Strict-Transport-Security"] == "max-age=31536000; includeSubDomains"
+

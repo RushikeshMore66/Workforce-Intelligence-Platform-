@@ -102,3 +102,4 @@ def test_no_sensitive_labels(client_metrics: TestClient):
     assert "email" not in text
     assert "password" not in text
     assert "DATABASE_URL" not in text
+

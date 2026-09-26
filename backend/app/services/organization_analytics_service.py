@@ -94,11 +94,12 @@ class OrganizationAnalyticsService:
         ).group_by(Task.status).all()
 
         counts = {status: count for status, count in status_counts}
-        todo = counts.get(TaskStatusEnum.TODO, 0)
+        planned = counts.get(TaskStatusEnum.PLANNED, 0)
         in_progress = counts.get(TaskStatusEnum.IN_PROGRESS, 0)
-        blocked = counts.get(TaskStatusEnum.BLOCKED, 0)
+        on_hold = counts.get(TaskStatusEnum.ON_HOLD, 0)
         completed = counts.get(TaskStatusEnum.COMPLETED, 0)
-        total = todo + in_progress + blocked + completed
+        cancelled = counts.get(TaskStatusEnum.CANCELLED, 0)
+        total = planned + in_progress + on_hold + completed + cancelled
 
         overdue = self.db.query(func.count(Task.id)).filter(
             Task.status != TaskStatusEnum.COMPLETED,
@@ -111,10 +112,11 @@ class OrganizationAnalyticsService:
 
         return OrganizationWorkloadMetrics(
             total=total,
-            todo=todo,
+            planned=planned,
             in_progress=in_progress,
-            blocked=blocked,
+            on_hold=on_hold,
             completed=completed,
+            cancelled=cancelled,
             overdue=overdue,
             unassigned=unassigned,
         )
@@ -153,12 +155,12 @@ class OrganizationAnalyticsService:
         completion_rate = (completed_tasks / total_tasks) if total_tasks > 0 else 0.0
 
         # Cycle time:
-        # 1. First TODO -> IN_PROGRESS transition
+        # 1. First PLANNED -> IN_PROGRESS transition (start of active work)
         started_cte = self.db.query(
             TaskTransition.task_id,
             func.min(TaskTransition.timestamp).label("started_at")
         ).filter(
-            TaskTransition.from_status == TaskStatusEnum.TODO,
+            TaskTransition.from_status == TaskStatusEnum.PLANNED,
             TaskTransition.to_status == TaskStatusEnum.IN_PROGRESS
         ).group_by(TaskTransition.task_id).cte("started_cte")
 
@@ -207,9 +209,8 @@ class OrganizationAnalyticsService:
         )
 
     def _get_attention_metrics(self, cutoff_7: datetime, workload: OrganizationWorkloadMetrics) -> OrganizationAttentionMetrics:
-        # Overdue, blocked, unassigned pulled from workload
-        overdue_tasks = workload.overdue
-        blocked_tasks = workload.blocked
+        # ON_HOLD replaces the old BLOCKED concept — tasks waiting on something
+        on_hold_tasks = workload.on_hold
         unassigned_tasks = workload.unassigned
 
         at_risk_projects = self.db.query(func.count(Project.id)).filter(
@@ -227,7 +228,7 @@ class OrganizationAnalyticsService:
 
         return OrganizationAttentionMetrics(
             overdue_tasks=overdue_tasks,
-            blocked_tasks=blocked_tasks,
+            on_hold_tasks=on_hold_tasks,
             unassigned_tasks=unassigned_tasks,
             at_risk_projects=at_risk_projects,
             workers_with_no_recent_activity=workers_with_no_recent_activity,

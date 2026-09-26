@@ -42,3 +42,4 @@ def test_metrics_strategy_uses_bounded_route_labels():
     audit_file = docs_dir / "observability-audit.md"
     content = audit_file.read_text(encoding="utf-8")
     assert "bounded route-template labels" in content.lower()
+

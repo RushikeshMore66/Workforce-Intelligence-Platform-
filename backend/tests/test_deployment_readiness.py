@@ -92,3 +92,4 @@ class TestStorageConfiguration:
             REPORT_STORAGE_PATH=str(test_dir)
         )
         assert test_dir.exists()
+

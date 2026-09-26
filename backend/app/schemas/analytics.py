@@ -7,14 +7,14 @@ class TaskCompletionDataPoint(BaseSchema):
     month: str
     completed: int
     in_progress: int
-    blocked: int
+    on_hold: int
 
 
 class TeamWorkloadDataPoint(BaseSchema):
     team: str
     tasks: int
     completed: int
-    blocked: int
+    on_hold: int
 
 
 class ProjectProgressDataPoint(BaseSchema):
@@ -41,10 +41,11 @@ class AnalyticsDataOut(BaseSchema):
 
 class WorkerWorkloadMetrics(BaseSchema):
     total: int
-    todo: int
+    planned: int
     in_progress: int
-    blocked: int
+    on_hold: int
     completed: int
+    cancelled: int
     overdue: int
 
 
@@ -79,10 +80,11 @@ class TeamWorkforceMetrics(BaseSchema):
 
 class TeamWorkloadMetrics(BaseSchema):
     total: int
-    todo: int
+    planned: int
     in_progress: int
-    blocked: int
+    on_hold: int
     completed: int
+    cancelled: int
     overdue: int
 
 
@@ -117,10 +119,11 @@ class ProjectWorkforceMetrics(BaseSchema):
 
 class ProjectWorkloadMetrics(BaseSchema):
     total: int
-    todo: int
+    planned: int
     in_progress: int
-    blocked: int
+    on_hold: int
     completed: int
+    cancelled: int
     overdue: int
 
 
@@ -160,10 +163,11 @@ class OrganizationWorkforceMetrics(BaseSchema):
 
 class OrganizationWorkloadMetrics(BaseSchema):
     total: int
-    todo: int
+    planned: int
     in_progress: int
-    blocked: int
+    on_hold: int
     completed: int
+    cancelled: int
     overdue: int
     unassigned: int
 
@@ -187,7 +191,7 @@ class OrganizationDeliveryMetrics(BaseSchema):
 
 class OrganizationAttentionMetrics(BaseSchema):
     overdue_tasks: int
-    blocked_tasks: int
+    on_hold_tasks: int
     unassigned_tasks: int
     at_risk_projects: int
     workers_with_no_recent_activity: int

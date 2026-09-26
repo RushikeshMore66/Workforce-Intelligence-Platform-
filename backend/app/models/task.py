@@ -9,10 +9,12 @@ from app.models.project import ProjectPriorityEnum
 
 
 class TaskStatusEnum(str, enum.Enum):
-    TODO = "TODO"
+    PLANNED = "PLANNED"
     IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
     COMPLETED = "COMPLETED"
-    BLOCKED = "BLOCKED"
+    CANCELLED = "CANCELLED"
+
 
 
 class Task(Base):
@@ -27,7 +29,7 @@ class Task(Base):
     status = Column(
         Enum(TaskStatusEnum, name="task_status_enum"),
         nullable=False,
-        default=TaskStatusEnum.TODO,
+        default=TaskStatusEnum.PLANNED,
         index=True,
     )
     priority = Column(
@@ -102,6 +104,8 @@ class TaskTransition(Base):
     from_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=True)
     to_status = Column(Enum(TaskStatusEnum, name="task_status_enum"), nullable=False)
     changed_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    # reason is required when transitioning to ON_HOLD; optional for other transitions
+    reason = Column(Text, nullable=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     task = relationship("Task", back_populates="transitions")

@@ -25,9 +25,15 @@ class ProjectUpdate(BaseSchema):
     deadline: Optional[date] = None
     priority: Optional[ProjectPriority] = None
     supervisor_id: Optional[str] = None
-    status: Optional[ProjectStatus] = None
     health: Optional[ProjectHealth] = None
-    progress: Optional[int] = None
+    # status and progress are intentionally excluded — use POST /{project_id}/status
+    # and the service layer for those fields.
+
+
+class ProjectStatusChange(BaseSchema):
+    """Request body for the dedicated project lifecycle-transition endpoint."""
+    status: ProjectStatus
+    reason: Optional[str] = None
 
 
 class ProjectOut(ProjectBase):

@@ -114,7 +114,7 @@ def report_data(db_session):
               status=TaskStatusEnum.COMPLETED, due_date=today + timedelta(days=5))
     # t2: BLOCKED, w2, p1, overdue
     t2 = Task(id="rp-t2", project_id="rp-p1", title="Task 2", assignee_id="rp-w2",
-              status=TaskStatusEnum.BLOCKED, due_date=today - timedelta(days=3))
+              status=TaskStatusEnum.ON_HOLD, due_date=today - timedelta(days=3))
     # t3: IN_PROGRESS, unassigned, p1
     t3 = Task(id="rp-t3", project_id="rp-p1", title="Task 3", assignee_id=None,
               status=TaskStatusEnum.IN_PROGRESS, due_date=today + timedelta(days=10))
@@ -126,7 +126,7 @@ def report_data(db_session):
 
     # Transitions — t1 has valid history; t4 does NOT (no TODO→IN_PROGRESS)
     tr1 = TaskTransition(id="rp-tr1", task_id="rp-t1",
-                         from_status=TaskStatusEnum.TODO,
+                         from_status=TaskStatusEnum.PLANNED,
                          to_status=TaskStatusEnum.IN_PROGRESS,
                          timestamp=now - timedelta(hours=6))
     tr2 = TaskTransition(id="rp-tr2", task_id="rp-t1",
@@ -565,3 +565,4 @@ def test_activity_report_worker_cannot_see_other_worker(client, report_data):
 def test_activity_report_unauthenticated(client, report_data):
     resp = client.get("/api/v1/reports/activity")
     assert resp.status_code == 401
+

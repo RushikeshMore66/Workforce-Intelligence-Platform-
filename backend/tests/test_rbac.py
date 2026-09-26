@@ -142,7 +142,7 @@ def rbac_db():
         title="Task 1",
         assignee_id="worker-profile-1",
         team_id="team-rbac-1",
-        status=TaskStatusEnum.TODO,
+        status=TaskStatusEnum.PLANNED,
         priority=ProjectPriorityEnum.MEDIUM,
         due_date=date.today()
     )
@@ -154,7 +154,7 @@ def rbac_db():
         title="Task 2",
         assignee_id="worker-profile-2", # Other worker
         team_id=None,
-        status=TaskStatusEnum.TODO,
+        status=TaskStatusEnum.PLANNED,
         priority=ProjectPriorityEnum.MEDIUM,
         due_date=date.today()
     )
@@ -489,3 +489,4 @@ class TestWorkerWorkHistory:
         token = make_token("rbac-owner", "OWNER")
         resp = rbac_client.get("/api/v1/workers/worker-profile-2/updates", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
+

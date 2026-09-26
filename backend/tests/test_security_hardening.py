@@ -352,3 +352,4 @@ class TestHTTPExceptionNormalization:
         assert "error" in body
         # detail should be a list of Pydantic validation errors
         assert "detail" in body
+

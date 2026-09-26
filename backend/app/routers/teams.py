@@ -55,8 +55,8 @@ def _format_worker(w, db: Session) -> WorkerOut:
         active_project_id=w.active_project_id,
         completed_task_count=counts.get(TaskStatusEnum.COMPLETED, 0),
         in_progress_task_count=counts.get(TaskStatusEnum.IN_PROGRESS, 0),
-        pending_task_count=counts.get(TaskStatusEnum.TODO, 0),
-        blocked_task_count=counts.get(TaskStatusEnum.BLOCKED, 0),
+        pending_task_count=counts.get(TaskStatusEnum.PLANNED, 0),
+        blocked_task_count=counts.get(TaskStatusEnum.ON_HOLD, 0),
     )
 
 

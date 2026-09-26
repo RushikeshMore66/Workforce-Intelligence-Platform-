@@ -122,3 +122,4 @@ def test_404_responses_also_receive_request_ids(client: TestClient):
     assert response.status_code == 404
     req_id = response.headers.get("X-Request-ID")
     assert req_id is not None
+

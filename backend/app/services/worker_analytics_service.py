@@ -40,24 +40,27 @@ class WorkerAnalyticsService:
         ).filter(Task.assignee_id == worker_id).group_by(Task.status).all()
 
         counts = {status: count for status, count in status_counts}
-        todo = counts.get(TaskStatusEnum.TODO, 0)
+        planned = counts.get(TaskStatusEnum.PLANNED, 0)
         in_progress = counts.get(TaskStatusEnum.IN_PROGRESS, 0)
-        blocked = counts.get(TaskStatusEnum.BLOCKED, 0)
+        on_hold = counts.get(TaskStatusEnum.ON_HOLD, 0)
         completed = counts.get(TaskStatusEnum.COMPLETED, 0)
-        total = todo + in_progress + blocked + completed
+        cancelled = counts.get(TaskStatusEnum.CANCELLED, 0)
+        total = planned + in_progress + on_hold + completed + cancelled
 
         overdue = self.db.query(func.count(Task.id)).filter(
             Task.assignee_id == worker_id,
             Task.status != TaskStatusEnum.COMPLETED,
+            Task.status != TaskStatusEnum.CANCELLED,
             Task.due_date < date.today()
         ).scalar() or 0
 
         return WorkerWorkloadMetrics(
             total=total,
-            todo=todo,
+            planned=planned,
             in_progress=in_progress,
-            blocked=blocked,
+            on_hold=on_hold,
             completed=completed,
+            cancelled=cancelled,
             overdue=overdue
         )
 
@@ -100,12 +103,12 @@ class WorkerAnalyticsService:
         completion_rate = (completed_tasks / total_tasks) if total_tasks > 0 else 0.0
 
         # Cycle time: targeted aggregation avoiding N+1
-        # CTE to get the first TODO -> IN_PROGRESS transition per task
+        # CTE to get the first PLANNED -> IN_PROGRESS transition per task (start of active work)
         started_cte = self.db.query(
             TaskTransition.task_id,
             func.min(TaskTransition.timestamp).label("started_at")
         ).filter(
-            TaskTransition.from_status == TaskStatusEnum.TODO,
+            TaskTransition.from_status == TaskStatusEnum.PLANNED,
             TaskTransition.to_status == TaskStatusEnum.IN_PROGRESS
         ).group_by(TaskTransition.task_id).cte("started_cte")
 

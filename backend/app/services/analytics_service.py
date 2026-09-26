@@ -15,20 +15,20 @@ class AnalyticsService:
     def get_analytics_data(self) -> AnalyticsDataOut:
         return AnalyticsDataOut(
             task_completion=[
-                TaskCompletionDataPoint(month="Mar", completed=18, in_progress=12, blocked=2),
-                TaskCompletionDataPoint(month="Apr", completed=24, in_progress=15, blocked=3),
-                TaskCompletionDataPoint(month="May", completed=29, in_progress=14, blocked=1),
-                TaskCompletionDataPoint(month="Jun", completed=35, in_progress=18, blocked=4),
-                TaskCompletionDataPoint(month="Jul", completed=42, in_progress=20, blocked=2),
-                TaskCompletionDataPoint(month="Aug", completed=34, in_progress=18, blocked=4),
+                TaskCompletionDataPoint(month="Mar", completed=18, in_progress=12, on_hold=2),
+                TaskCompletionDataPoint(month="Apr", completed=24, in_progress=15, on_hold=3),
+                TaskCompletionDataPoint(month="May", completed=29, in_progress=14, on_hold=1),
+                TaskCompletionDataPoint(month="Jun", completed=35, in_progress=18, on_hold=4),
+                TaskCompletionDataPoint(month="Jul", completed=42, in_progress=20, on_hold=2),
+                TaskCompletionDataPoint(month="Aug", completed=34, in_progress=18, on_hold=4),
             ],
             team_workload=[
-                TeamWorkloadDataPoint(team="Backend", tasks=36, completed=18, blocked=2),
-                TeamWorkloadDataPoint(team="Frontend", tasks=28, completed=16, blocked=1),
-                TeamWorkloadDataPoint(team="QA", tasks=20, completed=14, blocked=1),
-                TeamWorkloadDataPoint(team="DevOps", tasks=14, completed=11, blocked=0),
-                TeamWorkloadDataPoint(team="UI/UX", tasks=12, completed=9, blocked=0),
-                TeamWorkloadDataPoint(team="Mobile", tasks=16, completed=10, blocked=0),
+                TeamWorkloadDataPoint(team="Backend", tasks=36, completed=18, on_hold=2),
+                TeamWorkloadDataPoint(team="Frontend", tasks=28, completed=16, on_hold=1),
+                TeamWorkloadDataPoint(team="QA", tasks=20, completed=14, on_hold=1),
+                TeamWorkloadDataPoint(team="DevOps", tasks=14, completed=11, on_hold=0),
+                TeamWorkloadDataPoint(team="UI/UX", tasks=12, completed=9, on_hold=0),
+                TeamWorkloadDataPoint(team="Mobile", tasks=16, completed=10, on_hold=0),
             ],
             project_progress=[
                 ProjectProgressDataPoint(name="Hotel Billing", progress=76, target=70),

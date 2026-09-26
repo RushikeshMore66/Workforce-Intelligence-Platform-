@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ─── Node / Next.js ───────────────────────────────────────────────────────────
 /node_modules
 /.pnp
 .pnp.*
@@ -9,33 +9,62 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
-# testing
 /coverage
-
-# next.js
 /.next/
 /out/
-
-# production
 /build
 
-# misc
+# TypeScript build artifacts
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Python / Backend ─────────────────────────────────────────────────────────
+# Virtual environments
+backend/.venv/
+.venv/
+venv/
+env/
+ENV/
+
+# Compiled Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite / test databases
+*.db
+*.sqlite
+*.sqlite3
+
+# pytest cache
+.pytest_cache/
+**/.pytest_cache/
+
+# mypy, coverage
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.coverage
+htmlcov/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
 .DS_Store
 *.pem
 
-# debug
+# debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (opt-in to commit if needed)
 .env*
 
 # vercel
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts

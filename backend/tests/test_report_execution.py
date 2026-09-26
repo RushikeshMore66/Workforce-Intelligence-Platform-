@@ -167,3 +167,4 @@ def test_two_manual_executions_independent(db_session):
     assert run1.id != run2.id
     assert run1.status == ReportRunStatusEnum.COMPLETED
     assert run2.status == ReportRunStatusEnum.COMPLETED
+

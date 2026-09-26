@@ -114,3 +114,4 @@ def test_existing_application_logger_works():
     assert any(
         isinstance(h.formatter, JSONFormatter) for h in logging.getLogger().handlers
     )
+

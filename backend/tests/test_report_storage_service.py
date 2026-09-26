@@ -81,3 +81,4 @@ def test_resolve_safe_path_traversal(tmp_path: Path):
         
     with pytest.raises(ValueError, match="Path traversal detected"):
         svc.resolve_safe("/tmp/outside.txt")
+

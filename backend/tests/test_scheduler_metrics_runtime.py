@@ -131,3 +131,4 @@ class TestRecovery:
         recovered_before = SCHEDULER_JOBS_RECOVERED.labels(job_type="report")._value.get()
         record_job_recovered("report")
         assert SCHEDULER_JOBS_RECOVERED.labels(job_type="report")._value.get() == recovered_before + 1
+

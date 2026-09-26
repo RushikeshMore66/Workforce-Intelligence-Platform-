@@ -133,3 +133,4 @@ def test_registry_safety():
     import app.observability.scheduler_metrics as mod1
     import app.observability.scheduler_metrics as mod2
     assert mod1.SCHEDULER_JOBS_STARTED is mod2.SCHEDULER_JOBS_STARTED
+

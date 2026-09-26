@@ -82,24 +82,24 @@ def test_data(db_session):
     # t2: IN_PROGRESS (assigned to w3 - outside team!) overdue
     t2 = Task(id="task-2", project_id="proj-1", title="T2", assignee_id="w-3", status=TaskStatusEnum.IN_PROGRESS, due_date=date.today() - timedelta(days=2))
     # t3: TODO (assigned to w2) null due_date essentially (we will just set it to future)
-    t3 = Task(id="task-3", project_id="proj-1", title="T3", assignee_id="w-2", status=TaskStatusEnum.TODO, due_date=date.today() + timedelta(days=10))
+    t3 = Task(id="task-3", project_id="proj-1", title="T3", assignee_id="w-2", status=TaskStatusEnum.PLANNED, due_date=date.today() + timedelta(days=10))
     # t4: BLOCKED (unassigned) overdue
-    t4 = Task(id="task-4", project_id="proj-1", title="T4", assignee_id=None, status=TaskStatusEnum.BLOCKED, due_date=date.today() - timedelta(days=5))
+    t4 = Task(id="task-4", project_id="proj-1", title="T4", assignee_id=None, status=TaskStatusEnum.ON_HOLD, due_date=date.today() - timedelta(days=5))
     # t5: TODO (assigned to w1) not overdue
-    t5 = Task(id="task-5", project_id="proj-1", title="T5", assignee_id="w-1", status=TaskStatusEnum.TODO, due_date=date.today() + timedelta(days=5))
+    t5 = Task(id="task-5", project_id="proj-1", title="T5", assignee_id="w-1", status=TaskStatusEnum.PLANNED, due_date=date.today() + timedelta(days=5))
     db_session.add_all([t1, t2, t3, t4, t5])
     db_session.commit()
 
     # Task transitions for cycle time
     now = datetime.utcnow()
     # task-1 cycle time: 2 days (48 hours)
-    tr1 = TaskTransition(id="tr-1", task_id="task-1", from_status=TaskStatusEnum.TODO, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=5))
+    tr1 = TaskTransition(id="tr-1", task_id="task-1", from_status=TaskStatusEnum.PLANNED, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=5))
     tr2 = TaskTransition(id="tr-2", task_id="task-1", from_status=TaskStatusEnum.IN_PROGRESS, to_status=TaskStatusEnum.COMPLETED, timestamp=now - timedelta(days=3))
     # task-2 cycle time: incomplete (only started)
-    tr3 = TaskTransition(id="tr-3", task_id="task-2", from_status=TaskStatusEnum.TODO, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=4))
+    tr3 = TaskTransition(id="tr-3", task_id="task-2", from_status=TaskStatusEnum.PLANNED, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=4))
     # multiple transitions testing FIRST todo->in_progress
-    tr4 = TaskTransition(id="tr-4", task_id="task-2", from_status=TaskStatusEnum.IN_PROGRESS, to_status=TaskStatusEnum.BLOCKED, timestamp=now - timedelta(days=3))
-    tr5 = TaskTransition(id="tr-5", task_id="task-2", from_status=TaskStatusEnum.BLOCKED, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=2))
+    tr4 = TaskTransition(id="tr-4", task_id="task-2", from_status=TaskStatusEnum.IN_PROGRESS, to_status=TaskStatusEnum.ON_HOLD, timestamp=now - timedelta(days=3))
+    tr5 = TaskTransition(id="tr-5", task_id="task-2", from_status=TaskStatusEnum.ON_HOLD, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(days=2))
     db_session.add_all([tr1, tr2, tr3, tr4, tr5])
     db_session.commit()
 
@@ -114,7 +114,7 @@ def test_data(db_session):
     db_session.commit()
 
     # Tasks for Project 3 (0 workers)
-    t_p3 = Task(id="task-p3", project_id="proj-3", title="T P3", assignee_id=None, status=TaskStatusEnum.TODO, due_date=date.today() + timedelta(days=10))
+    t_p3 = Task(id="task-p3", project_id="proj-3", title="T P3", assignee_id=None, status=TaskStatusEnum.PLANNED, due_date=date.today() + timedelta(days=10))
     db_session.add(t_p3)
     db_session.commit()
 
@@ -183,12 +183,12 @@ def test_project_analytics_metrics(client, test_data):
     # Workload
     # 11. Correct total workload (5 tasks)
     assert data["workload"]["total"] == 5
-    # 12. Correct TODO count (2 tasks)
-    assert data["workload"]["todo"] == 2
+    # 12. Correct PLANNED count (2 tasks, previously TODO)
+    assert data["workload"]["planned"] == 2
     # 13. Correct IN_PROGRESS count (1 task)
     assert data["workload"]["in_progress"] == 1
-    # 14. Correct BLOCKED count (1 task)
-    assert data["workload"]["blocked"] == 1
+    # 14. Correct ON_HOLD count (1 task, previously BLOCKED)
+    assert data["workload"]["on_hold"] == 1
     # 15. Correct COMPLETED count (1 task)
     assert data["workload"]["completed"] == 1
     # 16, 17. Correct overdue count (t2, t4 are overdue. t1 is completed. t3, t5 future) -> 2
@@ -244,3 +244,4 @@ def test_zero_tasks_with_workers(client, test_data):
     data = resp.json()
     assert data["workforce"]["total_workers"] == 2
     assert data["workload"]["total"] == 0
+

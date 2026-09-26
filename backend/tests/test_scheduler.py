@@ -149,3 +149,4 @@ def test_worker_handles_shutdown_signal():
     handle_signal(None, None)
     
     assert stop_event.is_set()
+

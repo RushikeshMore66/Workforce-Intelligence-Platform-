@@ -439,26 +439,26 @@ def seed(db: Session):
         ("task-2", "proj-1", "Build room billing engine", "w-1", "team-1", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.HIGH, TODAY - timedelta(days=20)),
         ("task-3", "proj-1", "Restaurant charge aggregation module", "w-2", "team-1", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.MEDIUM, TODAY - timedelta(days=15)),
         ("task-4", "proj-1", "Conference room booking integration", "w-1", "team-1", TaskStatusEnum.IN_PROGRESS, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=10)),
-        ("task-5", "proj-1", "Payment gateway webhook handlers", "w-2", "team-1", TaskStatusEnum.TODO, ProjectPriorityEnum.HIGH, TODAY + timedelta(days=20)),
-        ("task-6", "proj-1", "Performance load testing", "w-1", "team-1", TaskStatusEnum.TODO, ProjectPriorityEnum.LOW, TODAY + timedelta(days=30)),
+        ("task-5", "proj-1", "Payment gateway webhook handlers", "w-2", "team-1", TaskStatusEnum.PLANNED, ProjectPriorityEnum.HIGH, TODAY + timedelta(days=20)),
+        ("task-6", "proj-1", "Performance load testing", "w-1", "team-1", TaskStatusEnum.PLANNED, ProjectPriorityEnum.LOW, TODAY + timedelta(days=30)),
 
         # proj-2: E-Commerce Mobile (AT_RISK, 62%, deadline in 15 days)
         ("task-7", "proj-2", "Product listing screen with filters", "w-4", "team-2", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.HIGH, TODAY - timedelta(days=5)),
         ("task-8", "proj-2", "Shopping cart with persistent state", "w-4", "team-2", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.HIGH, TODAY - timedelta(days=10)),
         ("task-9", "proj-2", "Razorpay payment integration", "w-4", "team-2", TaskStatusEnum.IN_PROGRESS, ProjectPriorityEnum.CRITICAL, TODAY + timedelta(days=5)),
-        ("task-10", "proj-2", "Push notification setup", "w-4", "team-2", TaskStatusEnum.BLOCKED, ProjectPriorityEnum.HIGH, TODAY + timedelta(days=8)),
-        ("task-11", "proj-2", "Order tracking real-time feed", "w-4", "team-2", TaskStatusEnum.TODO, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=12)),
+        ("task-10", "proj-2", "Push notification setup", "w-4", "team-2", TaskStatusEnum.ON_HOLD, ProjectPriorityEnum.HIGH, TODAY + timedelta(days=8)),
+        ("task-11", "proj-2", "Order tracking real-time feed", "w-4", "team-2", TaskStatusEnum.PLANNED, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=12)),
 
         # proj-3: CRM (DELAYED, 28%, 30 days deadline)
         ("task-12", "proj-3", "Lead management CRUD", "w-2", "team-1", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.HIGH, TODAY - timedelta(days=30)),
-        ("task-13", "proj-3", "Email sync integration", "w-2", "team-1", TaskStatusEnum.BLOCKED, ProjectPriorityEnum.CRITICAL, TODAY - timedelta(days=3)),
+        ("task-13", "proj-3", "Email sync integration", "w-2", "team-1", TaskStatusEnum.ON_HOLD, ProjectPriorityEnum.CRITICAL, TODAY - timedelta(days=3)),
         ("task-14", "proj-3", "Sales pipeline Kanban board", "w-1", "team-1", TaskStatusEnum.IN_PROGRESS, ProjectPriorityEnum.HIGH, TODAY + timedelta(days=15)),
-        ("task-15", "proj-3", "Automated follow-up scheduler", None, "team-1", TaskStatusEnum.TODO, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=25)),
+        ("task-15", "proj-3", "Automated follow-up scheduler", None, "team-1", TaskStatusEnum.PLANNED, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=25)),
 
         # proj-4: Internal Dashboard (ON_TRACK, 20%)
         ("task-16", "proj-4", "Design metrics schema", "w-1", "team-1", TaskStatusEnum.COMPLETED, ProjectPriorityEnum.MEDIUM, TODAY - timedelta(days=5)),
         ("task-17", "proj-4", "Build aggregation service", "w-2", "team-1", TaskStatusEnum.IN_PROGRESS, ProjectPriorityEnum.MEDIUM, TODAY + timedelta(days=30)),
-        ("task-18", "proj-4", "React dashboard components", None, "team-1", TaskStatusEnum.TODO, ProjectPriorityEnum.LOW, TODAY + timedelta(days=60)),
+        ("task-18", "proj-4", "React dashboard components", None, "team-1", TaskStatusEnum.PLANNED, ProjectPriorityEnum.LOW, TODAY + timedelta(days=60)),
     ]
 
     for (tid, pid, title, assignee_id, team_id, status, priority, due) in tasks:
@@ -568,14 +568,14 @@ def seed(db: Session):
     print("Seeding task transitions...")
 
     transitions = [
-        ("tr-1", "task-1", None, TaskStatusEnum.TODO, owner_user.id, NOW - timedelta(days=60)),
-        ("tr-2", "task-1", TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, w1_user.id, NOW - timedelta(days=30)),
+        ("tr-1", "task-1", None, TaskStatusEnum.PLANNED, owner_user.id, NOW - timedelta(days=60)),
+        ("tr-2", "task-1", TaskStatusEnum.PLANNED, TaskStatusEnum.IN_PROGRESS, w1_user.id, NOW - timedelta(days=30)),
         ("tr-3", "task-1", TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.COMPLETED, w1_user.id, NOW - timedelta(days=10)),
-        ("tr-4", "task-2", None, TaskStatusEnum.TODO, owner_user.id, NOW - timedelta(days=60)),
-        ("tr-5", "task-2", TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, w1_user.id, NOW - timedelta(days=25)),
+        ("tr-4", "task-2", None, TaskStatusEnum.PLANNED, owner_user.id, NOW - timedelta(days=60)),
+        ("tr-5", "task-2", TaskStatusEnum.PLANNED, TaskStatusEnum.IN_PROGRESS, w1_user.id, NOW - timedelta(days=25)),
         ("tr-6", "task-2", TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.COMPLETED, w1_user.id, NOW - timedelta(days=20)),
-        ("tr-7", "task-12", None, TaskStatusEnum.TODO, owner_user.id, NOW - timedelta(days=60)),
-        ("tr-8", "task-12", TaskStatusEnum.TODO, TaskStatusEnum.IN_PROGRESS, w2_user.id, NOW - timedelta(days=40)),
+        ("tr-7", "task-12", None, TaskStatusEnum.PLANNED, owner_user.id, NOW - timedelta(days=60)),
+        ("tr-8", "task-12", TaskStatusEnum.PLANNED, TaskStatusEnum.IN_PROGRESS, w2_user.id, NOW - timedelta(days=40)),
         ("tr-9", "task-12", TaskStatusEnum.IN_PROGRESS, TaskStatusEnum.COMPLETED, w2_user.id, NOW - timedelta(days=30)),
     ]
 
@@ -679,3 +679,4 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         db.close()
+

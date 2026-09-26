@@ -41,8 +41,8 @@ class DashboardService:
 
         tasks_completed = self.db.query(Task).filter(Task.status == TaskStatusEnum.COMPLETED).count()
         tasks_in_progress = self.db.query(Task).filter(Task.status == TaskStatusEnum.IN_PROGRESS).count()
-        tasks_pending = self.db.query(Task).filter(Task.status == TaskStatusEnum.TODO).count()
-        tasks_blocked = self.db.query(Task).filter(Task.status == TaskStatusEnum.BLOCKED).count()
+        tasks_pending = self.db.query(Task).filter(Task.status == TaskStatusEnum.PLANNED).count()
+        tasks_blocked = self.db.query(Task).filter(Task.status == TaskStatusEnum.ON_HOLD).count()
 
         return DashboardMetricsOut(
             active_projects=active_projects,

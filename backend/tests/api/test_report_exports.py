@@ -99,12 +99,12 @@ def export_data(db_session):
     t1 = Task(id="ex-t1", project_id="ex-p1", title="Task One", assignee_id="ex-w1",
               status=TaskStatusEnum.COMPLETED, due_date=today + timedelta(days=1))
     t2 = Task(id="ex-t2", project_id="ex-p1", title="Task Two", assignee_id="ex-w2",
-              status=TaskStatusEnum.BLOCKED, due_date=today - timedelta(days=2))
+              status=TaskStatusEnum.ON_HOLD, due_date=today - timedelta(days=2))
     db_session.add_all([t1, t2])
     db_session.commit()
 
     tr1 = TaskTransition(id="ex-tr1", task_id="ex-t1",
-                         from_status=TaskStatusEnum.TODO,
+                         from_status=TaskStatusEnum.PLANNED,
                          to_status=TaskStatusEnum.IN_PROGRESS,
                          timestamp=now - timedelta(hours=6))
     tr2 = TaskTransition(id="ex-tr2", task_id="ex-t1",
@@ -493,3 +493,4 @@ class TestActivityExport:
     def test_unauthenticated_rejected(self, client, export_data):
         r = client.get(self.URL)
         assert r.status_code == 401
+

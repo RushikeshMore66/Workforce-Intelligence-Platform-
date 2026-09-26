@@ -329,3 +329,4 @@ class TestReportRuns:
     def test_get_unknown_run(self, client, schedule):
         r = client.get(f"/api/v1/reports/runs/unknown", headers=OWNER())
         assert r.status_code == 404
+

@@ -47,10 +47,10 @@ def test_update_project(client):
 
     update_resp = client.patch(
         f"/api/v1/projects/{project_id}",
-        json={"progress": 45, "health": "AT_RISK"},
+        json={"health": "AT_RISK"},
         headers=get_auth_headers()
     )
     assert update_resp.status_code == 200
     updated_data = update_resp.json()
-    assert updated_data["progress"] == 45
     assert updated_data["health"] == "AT_RISK"
+

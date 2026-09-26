@@ -31,10 +31,11 @@ class ProjectPriority(str, enum.Enum):
 
 
 class TaskStatus(str, enum.Enum):
-    TODO = "TODO"
+    PLANNED = "PLANNED"
     IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
     COMPLETED = "COMPLETED"
-    BLOCKED = "BLOCKED"
+    CANCELLED = "CANCELLED"
 
 
 class BlockerStatus(str, enum.Enum):

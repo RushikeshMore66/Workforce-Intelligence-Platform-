@@ -55,7 +55,7 @@ def org_test_data(db_session):
     # t1: COMPLETED, assigned to w1, not overdue (completed)
     t1 = Task(id="t-1", project_id="p-1", title="T1", assignee_id="w-1", status=TaskStatusEnum.COMPLETED, due_date=date.today() - timedelta(days=1))
     # t2: BLOCKED, unassigned, overdue
-    t2 = Task(id="t-2", project_id="p-1", title="T2", assignee_id=None, status=TaskStatusEnum.BLOCKED, due_date=date.today() - timedelta(days=5))
+    t2 = Task(id="t-2", project_id="p-1", title="T2", assignee_id=None, status=TaskStatusEnum.ON_HOLD, due_date=date.today() - timedelta(days=5))
     # t3: IN_PROGRESS, assigned to w2, not overdue
     t3 = Task(id="t-3", project_id="p-2", title="T3", assignee_id="w-2", status=TaskStatusEnum.IN_PROGRESS, due_date=date.today() + timedelta(days=10))
     db_session.add_all([t1, t2, t3])
@@ -64,7 +64,7 @@ def org_test_data(db_session):
     # Transitions for cycle time
     now = datetime.utcnow()
     # t1: valid cycle time (2 hours)
-    tr1 = TaskTransition(id="tr-1", task_id="t-1", from_status=TaskStatusEnum.TODO, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(hours=4))
+    tr1 = TaskTransition(id="tr-1", task_id="t-1", from_status=TaskStatusEnum.PLANNED, to_status=TaskStatusEnum.IN_PROGRESS, timestamp=now - timedelta(hours=4))
     tr2 = TaskTransition(id="tr-2", task_id="t-1", from_status=TaskStatusEnum.IN_PROGRESS, to_status=TaskStatusEnum.COMPLETED, timestamp=now - timedelta(hours=2))
     db_session.add_all([tr1, tr2])
     db_session.commit()
@@ -114,9 +114,9 @@ def test_organization_metrics(client, org_test_data):
     # Workload
     wl = data["workload"]
     assert wl["total"] == 3
-    assert wl["todo"] == 0
+    assert wl["planned"] == 0
     assert wl["in_progress"] == 1
-    assert wl["blocked"] == 1
+    assert wl["on_hold"] == 1
     assert wl["completed"] == 1
     assert wl["overdue"] == 1 # t2
     assert wl["unassigned"] == 1 # t2
@@ -140,7 +140,7 @@ def test_organization_metrics(client, org_test_data):
     # Attention
     attn = data["attention"]
     assert attn["overdue_tasks"] == 1
-    assert attn["blocked_tasks"] == 1
+    assert attn["on_hold_tasks"] == 1
     assert attn["unassigned_tasks"] == 1
     assert attn["at_risk_projects"] == 1 # p2 is delayed
     assert attn["workers_with_no_recent_activity"] == 2 # w2, w3 have no updates in last 7 days
@@ -172,3 +172,4 @@ def test_zero_organization_metrics(client, db_session):
     assert data["delivery"]["tasks_missing_transition_history"] == 0
     assert data["attention"]["overdue_tasks"] == 0
     assert data["attention"]["workers_with_no_recent_activity"] == 0
+

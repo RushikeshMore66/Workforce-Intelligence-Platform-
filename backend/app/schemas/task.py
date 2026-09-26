@@ -22,9 +22,15 @@ class TaskUpdate(BaseSchema):
     description: Optional[str] = None
     assignee_id: Optional[str] = None
     team_id: Optional[str] = None
-    status: Optional[TaskStatus] = None
     priority: Optional[ProjectPriority] = None
     due_date: Optional[date] = None
+    # Status is intentionally excluded — use POST /{task_id}/status instead.
+
+
+class TaskStatusChange(BaseSchema):
+    """Request body for the dedicated task status-transition endpoint."""
+    status: TaskStatus
+    reason: Optional[str] = None
 
 
 class TaskOut(TaskBase):

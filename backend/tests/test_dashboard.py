@@ -27,3 +27,4 @@ def test_get_analytics(client):
     data = response.json()
     assert "task_completion" in data
     assert "team_workload" in data
+
