@@ -31,7 +31,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 @router.get("/organization", response_model=OrganizationSummaryReport)
 def get_organization_report(
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_VIEW)),
 ):
     """Organization-wide summary report. OWNER only."""
     return ReportService(db).get_organization_report()
@@ -147,7 +147,7 @@ def _stream(data: bytes, content_type: str, filename: str) -> StreamingResponse:
 def export_organization_report(
     format: str = Query(default="csv"),
     db: Session = Depends(get_db),
-    _: User = Depends(RequirePermission(Permission.ORGANIZATION_VIEW)),
+    _: User = Depends(RequirePermission(Permission.REPORT_ORGANIZATION_EXPORT)),
 ):
     """Export organization-wide summary report. OWNER only."""
     report = ReportService(db).get_organization_report()

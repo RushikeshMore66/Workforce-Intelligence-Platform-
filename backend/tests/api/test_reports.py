@@ -191,6 +191,11 @@ def test_org_report_team_leader_forbidden(client, report_data):
     assert resp.status_code == 403
 
 
+def test_org_report_unauthenticated(client, report_data):
+    resp = client.get("/api/v1/reports/organization")
+    assert resp.status_code == 401
+
+
 def test_org_report_metrics(client, report_data):
     resp = client.get("/api/v1/reports/organization",
                       headers=auth("usr-test-owner", UserRoleEnum.OWNER))
@@ -252,6 +257,13 @@ def test_project_report_worker_wrong_team_forbidden(client, report_data):
     """Worker in team2 cannot access p1 (assigned to team1)."""
     resp = client.get("/api/v1/reports/projects/rp-p1",
                       headers=auth("rp-w3-u", UserRoleEnum.WORKER))
+    assert resp.status_code == 403
+
+
+def test_project_report_team_leader_unrelated_project_forbidden(client, report_data):
+    """Team leader of team1 cannot access p2 (not assigned to team1)."""
+    resp = client.get("/api/v1/reports/projects/rp-p2",
+                      headers=auth("rp-tl-u", UserRoleEnum.TEAM_LEADER))
     assert resp.status_code == 403
 
 
@@ -322,6 +334,13 @@ def test_worker_report_other_worker_forbidden(client, report_data):
     assert resp.status_code == 403
 
 
+def test_worker_report_team_leader_unrelated_worker_forbidden(client, report_data):
+    """Team leader cannot access worker outside their team/scope."""
+    resp = client.get("/api/v1/reports/workers/rp-w3",
+                      headers=auth("rp-tl-u", UserRoleEnum.TEAM_LEADER))
+    assert resp.status_code == 403
+
+
 def test_worker_report_authorship_classification(client, report_data):
     """w2 has 1 update with NULL created_by — should be excluded from both categories."""
     resp = client.get("/api/v1/reports/workers/rp-w2",
@@ -384,6 +403,42 @@ def test_team_report_worker_other_team_forbidden(client, report_data):
     resp = client.get("/api/v1/reports/teams/rp-team2",
                       headers=auth("rp-w1-u", UserRoleEnum.WORKER))
     assert resp.status_code == 403
+
+
+def test_team_report_team_leader_other_team_forbidden(client, report_data):
+    """Team leader cannot access a different team's report."""
+    resp = client.get("/api/v1/reports/teams/rp-team2",
+                      headers=auth("rp-tl-u", UserRoleEnum.TEAM_LEADER))
+    assert resp.status_code == 403
+
+
+def test_supervisor_outside_scope_forbidden(client, db_session, report_data):
+    """Supervisor cannot access project, worker, or team outside their supervised scope."""
+    other_sup_user = User(
+        id="rp-other-sup-u",
+        name="Other Sup",
+        email="rp-other-sup@x.com",
+        hashed_password="h",
+        role=UserRoleEnum.SUPERVISOR,
+        avatar_initials="OS",
+    )
+    other_sup = Supervisor(id="rp-other-sup", user_id="rp-other-sup-u")
+    db_session.add_all([other_sup_user, other_sup])
+    db_session.commit()
+
+    headers = auth("rp-other-sup-u", UserRoleEnum.SUPERVISOR)
+
+    # Project outside scope
+    resp_proj = client.get("/api/v1/reports/projects/rp-p1", headers=headers)
+    assert resp_proj.status_code == 403
+
+    # Worker outside scope
+    resp_worker = client.get("/api/v1/reports/workers/rp-w1", headers=headers)
+    assert resp_worker.status_code == 403
+
+    # Team outside scope
+    resp_team = client.get("/api/v1/reports/teams/rp-team1", headers=headers)
+    assert resp_team.status_code == 403
 
 
 def test_team_report_not_found(client, report_data):

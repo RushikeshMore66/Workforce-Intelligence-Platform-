@@ -38,6 +38,8 @@ class Permission(str, Enum):
 
     REPORT_VIEW = "report:view"
     REPORT_EXPORT = "report:export"
+    REPORT_ORGANIZATION_VIEW = "report:organization:view"
+    REPORT_ORGANIZATION_EXPORT = "report:organization:export"
 
     ANALYTICS_VIEW = "analytics:view"
     INTELLIGENCE_VIEW = "intelligence:view"

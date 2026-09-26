@@ -188,6 +188,10 @@ class TestOrganizationExport:
         r = client.get(self.URL, headers=auth("ex-tl-u", UserRoleEnum.TEAM_LEADER))
         assert r.status_code == 403
 
+    def test_unauthenticated(self, client, export_data):
+        r = client.get(self.URL)
+        assert r.status_code == 401
+
     def test_csv_values_match_json(self, client, export_data):
         """CSV metric values must match what the JSON endpoint returns."""
         json_r = client.get("/api/v1/reports/organization", headers=OWNER())
@@ -252,6 +256,16 @@ class TestProjectExport:
         r = client.get(self.url(), headers=auth("ex-w2-u", UserRoleEnum.WORKER))
         # ex-w2 IS in team1 which is assigned to ex-p1 → should be 200
         assert r.status_code == 200
+
+    def test_unrelated_team_worker_forbidden(self, client, db_session, export_data):
+        w3_u = User(id="ex-w3-u", name="W3", email="ex-w3@x.com", hashed_password="h",
+                    role=UserRoleEnum.WORKER, avatar_initials="W3")
+        w3 = Worker(id="ex-w3", user_id="ex-w3-u", role="Dev", team_id="ex-team2",
+                    status=WorkerStatusEnum.ACTIVE)
+        db_session.add_all([w3_u, w3])
+        db_session.commit()
+        r = client.get(self.url(), headers=auth("ex-w3-u", UserRoleEnum.WORKER))
+        assert r.status_code == 403
 
     def test_csv_values_match_json(self, client, export_data):
         json_r = client.get("/api/v1/reports/projects/ex-p1", headers=OWNER())
@@ -335,6 +349,28 @@ class TestTeamExport:
     def test_worker_other_team_forbidden(self, client, export_data):
         r = client.get(self.url("ex-team2"), headers=auth("ex-w1-u", UserRoleEnum.WORKER))
         assert r.status_code == 403
+
+    def test_team_leader_other_team_forbidden(self, client, export_data):
+        r = client.get(self.url("ex-team2"), headers=auth("ex-tl-u", UserRoleEnum.TEAM_LEADER))
+        assert r.status_code == 403
+
+    def test_supervisor_outside_scope_forbidden(self, client, db_session, export_data):
+        other_sup_user = User(
+            id="ex-other-sup-u",
+            name="Other Sup",
+            email="ex-other-sup@x.com",
+            hashed_password="h",
+            role=UserRoleEnum.SUPERVISOR,
+            avatar_initials="OS",
+        )
+        other_sup = Supervisor(id="ex-other-sup", user_id="ex-other-sup-u")
+        db_session.add_all([other_sup_user, other_sup])
+        db_session.commit()
+
+        headers = auth("ex-other-sup-u", UserRoleEnum.SUPERVISOR)
+        assert client.get("/api/v1/reports/projects/ex-p1/export", headers=headers).status_code == 403
+        assert client.get("/api/v1/reports/workers/ex-w1/export", headers=headers).status_code == 403
+        assert client.get("/api/v1/reports/teams/ex-team1/export", headers=headers).status_code == 403
 
     def test_not_found(self, client, export_data):
         r = client.get(self.url("no-such"), headers=OWNER())

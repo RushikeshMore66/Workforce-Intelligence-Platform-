@@ -33,6 +33,8 @@ ROLE_PERMISSIONS = {
         Permission.TASK_DELETE,
         Permission.REPORT_VIEW,
         Permission.REPORT_EXPORT,
+        Permission.REPORT_ORGANIZATION_VIEW,
+        Permission.REPORT_ORGANIZATION_EXPORT,
         Permission.ANALYTICS_VIEW,
         Permission.INTELLIGENCE_VIEW,
     },
