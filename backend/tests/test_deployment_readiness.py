@@ -12,11 +12,11 @@ client = TestClient(app)
 class TestDeploymentConfiguration:
     def test_production_requires_strong_jwt_secret(self):
         with pytest.raises(ValidationError) as exc:
-            Settings(ENVIRONMENT="production", SECRET_KEY="weak", DATABASE_URL="postgresql://user:pass@localhost/db")
+            Settings(ENVIRONMENT="production", SECRET_KEY="weak", DATABASE_URL="postgresql://user:pass@localhost/db", AUTH_COOKIE_SECURE=True)
         assert "at least 32 characters long" in str(exc.value) or "SECRET_KEY" in str(exc.value)
 
         with pytest.raises(ValidationError) as exc:
-            Settings(ENVIRONMENT="production", SECRET_KEY="change-me", DATABASE_URL="postgresql://user:pass@localhost/db")
+            Settings(ENVIRONMENT="production", SECRET_KEY="change-me", DATABASE_URL="postgresql://user:pass@localhost/db", AUTH_COOKIE_SECURE=True)
         assert "unsafe placeholder" in str(exc.value) or "SECRET_KEY" in str(exc.value)
 
     def test_production_rejects_sqlite(self):
@@ -24,7 +24,8 @@ class TestDeploymentConfiguration:
             Settings(
                 ENVIRONMENT="production",
                 SECRET_KEY="a" * 32,
-                DATABASE_URL="sqlite:///./test.db"
+                DATABASE_URL="sqlite:///./test.db",
+                AUTH_COOKIE_SECURE=True
             )
         assert "SQLite is not allowed in production" in str(exc.value)
 
@@ -33,7 +34,8 @@ class TestDeploymentConfiguration:
             Settings(
                 ENVIRONMENT="production",
                 SECRET_KEY="a" * 32,
-                DATABASE_URL=""
+                DATABASE_URL="",
+                AUTH_COOKIE_SECURE=True
             )
         assert "DATABASE_URL must be configured" in str(exc.value) or "DATABASE_URL" in str(exc.value)
 
@@ -45,12 +47,13 @@ class TestDeploymentConfiguration:
                 ENVIRONMENT="production",
                 SECRET_KEY="a" * 32,
                 DATABASE_URL="postgresql://user:pass@localhost/db",
-                BACKEND_CORS_ORIGINS=["*"]
+                BACKEND_CORS_ORIGINS=["*"],
+                AUTH_COOKIE_SECURE=True
             )
 
     def test_required_environment_variables_validated(self):
         with pytest.raises(ValidationError) as exc:
-            Settings(ENVIRONMENT="production") # Missing SECRET_KEY and DATABASE_URL
+            Settings(ENVIRONMENT="production", AUTH_COOKIE_SECURE=True, SECRET_KEY="", DATABASE_URL="") # Missing SECRET_KEY and DATABASE_URL
         assert "SECRET_KEY" in str(exc.value)
         assert "DATABASE_URL" in str(exc.value)
 

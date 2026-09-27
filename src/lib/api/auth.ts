@@ -1,66 +1,123 @@
-/**
- * Auth API module.
- * Handles login, logout, fetching the current authenticated user,
- * profile updates, and password change.
- */
+import {
+  ChangePasswordPayload,
+  LoginCredentials,
+  UpdateProfilePayload,
+  User,
+} from '@/types';
 
-import { User, LoginCredentials, AuthTokens, UpdateProfilePayload, ChangePasswordPayload } from '@/types';
+import {
+  setLoginFlag,
+  clearLoginFlag,
+  hasLoginFlag,
+} from '@/lib/auth/storage';
+
 import { apiClient } from './client';
-import { setLoginFlag, clearLoginFlag, hasLoginFlag } from '../auth/storage';
 
-export async function login(credentials: LoginCredentials): Promise<User> {
-  await apiClient.post<AuthTokens>('/auth/login', {
-    email: credentials.email,
-    password: credentials.password,
-  });
+
+interface LoginResponse {
+  authenticated: boolean;
+  expiresIn: number;
+}
+
+
+interface CsrfResponse {
+  csrfEnabled: boolean;
+}
+
+
+export async function ensureCsrfToken(): Promise<void> {
+  await apiClient.get<CsrfResponse>(
+    '/auth/csrf',
+  );
+}
+
+
+export async function login(
+  credentials: LoginCredentials,
+): Promise<User> {
+  await apiClient.post<LoginResponse>(
+    '/auth/login',
+    {
+      email: credentials.email,
+      password: credentials.password,
+    },
+  );
+
   setLoginFlag();
+
+  await ensureCsrfToken();
+
   const user = await getCurrentUser();
-  if (!user) throw new Error('Failed to fetch user after login');
+
+  if (!user) {
+    clearLoginFlag();
+
+    throw new Error(
+      'Failed to fetch authenticated user after login',
+    );
+  }
+
   return user;
 }
 
+
 export async function logout(): Promise<void> {
   try {
-    await apiClient.post('/auth/logout');
-  } catch {
-    // Ignore errors on logout
+    await apiClient.post(
+      '/auth/logout',
+    );
+  } finally {
+    clearLoginFlag();
   }
-  clearLoginFlag();
 }
 
+
 export async function getCurrentUser(): Promise<User | null> {
-  if (!hasLoginFlag()) return null;
+  if (!hasLoginFlag()) {
+    return null;
+  }
+
   try {
-    return await apiClient.get<User>('/auth/me');
+    const user = await apiClient.get<User>(
+      '/auth/me',
+    );
+
+    /*
+     * Ensures older sessions created before the CSRF
+     * rollout receive a fresh CSRF cookie.
+     */
+    await ensureCsrfToken();
+
+    return user;
   } catch {
     clearLoginFlag();
     return null;
   }
 }
 
-/**
- * Update the authenticated user's own safe profile fields.
- * Only name, company, and avatarInitials are accepted.
- * Role and account status cannot be modified through this endpoint.
- */
-export async function updateProfile(data: UpdateProfilePayload): Promise<User> {
-  return apiClient.patch<User>('/auth/me', data);
+
+export async function updateProfile(
+  data: UpdateProfilePayload,
+): Promise<User> {
+  return apiClient.patch<User>(
+    '/auth/me',
+    data,
+  );
 }
 
-/**
- * Change the authenticated user's password.
- * Requires the current password for verification.
- * Returns 204 No Content on success.
- */
-export async function changePassword(data: ChangePasswordPayload): Promise<void> {
-  await apiClient.post<void>('/auth/change-password', {
-    // Backend expects snake_case; apiClient sends JSON which the backend
-    // reads as snake_case (Pydantic default).
-    // The toCamelCase transform only applies to responses, not requests.
-    current_password: data.currentPassword,
-    new_password: data.newPassword,
-  });
+
+export async function changePassword(
+  data: ChangePasswordPayload,
+): Promise<void> {
+  await apiClient.post<void>(
+    '/auth/change-password',
+    {
+      current_password: data.currentPassword,
+      new_password: data.newPassword,
+    },
+  );
 }
+
 
 export function isAuthenticated(): boolean {
   return hasLoginFlag();

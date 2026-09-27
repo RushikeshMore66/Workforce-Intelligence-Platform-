@@ -11,7 +11,8 @@ def test_production_rejects_weak_secret():
         Settings(
             ENVIRONMENT="production",
             DATABASE_URL="postgresql://user:pass@localhost/db",
-            SECRET_KEY="super-secret-production-key-change-in-env"
+            SECRET_KEY="super-secret-production-key-change-in-env",
+            AUTH_COOKIE_SECURE=True
         )
 
 def test_production_rejects_short_secret():
@@ -20,7 +21,8 @@ def test_production_rejects_short_secret():
         Settings(
             ENVIRONMENT="production",
             DATABASE_URL="postgresql://user:pass@localhost/db",
-            SECRET_KEY="short"
+            SECRET_KEY="short",
+            AUTH_COOKIE_SECURE=True
         )
 
 def test_production_rejects_sqlite():
@@ -29,7 +31,8 @@ def test_production_rejects_sqlite():
         Settings(
             ENVIRONMENT="production",
             DATABASE_URL="sqlite:///./workforce.db",
-            SECRET_KEY="a" * 32
+            SECRET_KEY="a" * 32,
+            AUTH_COOKIE_SECURE=True
         )
 
 def test_production_rejects_long_jwt_expiry():
@@ -39,7 +42,8 @@ def test_production_rejects_long_jwt_expiry():
             ENVIRONMENT="production",
             DATABASE_URL="postgresql://user:pass@localhost/db",
             SECRET_KEY="a" * 32,
-            ACCESS_TOKEN_EXPIRE_MINUTES=1440
+            ACCESS_TOKEN_EXPIRE_MINUTES=1440,
+            AUTH_COOKIE_SECURE=True
         )
 
 def test_algorithm_whitelist():
@@ -69,7 +73,8 @@ def test_production_warns_cors_wildcard():
             DATABASE_URL="postgresql://user:pass@localhost/db",
             SECRET_KEY="a" * 32,
             ACCESS_TOKEN_EXPIRE_MINUTES=30,
-            BACKEND_CORS_ORIGINS=["*"]
+            BACKEND_CORS_ORIGINS=["*"],
+            AUTH_COOKIE_SECURE=True
         )
         assert len(w) == 1
         assert "Wildcard CORS ('*') is discouraged in production" in str(w[-1].message)

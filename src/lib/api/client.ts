@@ -35,6 +35,41 @@ export function getAuthHeaders(): Record<string, string> {
   return {};
 }
 
+const CSRF_COOKIE_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+const UNSAFE_METHODS = new Set([
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+]);
+
+
+function getCookieValue(
+  cookieName: string,
+): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const cookies = document.cookie
+    .split(';')
+    .map((cookie) => cookie.trim());
+
+  const target = `${cookieName}=`;
+
+  const match = cookies.find(
+    (cookie) => cookie.startsWith(target),
+  );
+
+  return match
+    ? decodeURIComponent(
+        match.slice(target.length),
+      )
+    : null;
+}
+
 // ── Error class ──────────────────────────────────────────────
 
 export class ApiRequestError extends Error {
@@ -66,6 +101,18 @@ async function request<T>({ method, path, body, params, signal }: RequestConfig)
     Accept: 'application/json',
     ...getAuthHeaders(),
   };
+
+  const upperMethod = method.toUpperCase();
+
+  if (UNSAFE_METHODS.has(upperMethod)) {
+    const csrfToken = getCookieValue(
+      CSRF_COOKIE_NAME,
+    );
+
+    if (csrfToken) {
+      headers[CSRF_HEADER_NAME] = csrfToken;
+    }
+  }
 
   let url = `${API_BASE}${path}`;
 

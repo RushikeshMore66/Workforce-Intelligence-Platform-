@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
+from app.middleware.csrf import CSRFMiddleware
 from app.routers import (
     analytics_router,
     auth_router,
@@ -105,10 +106,11 @@ app.add_middleware(
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "Accept","X-CSRF-Token"],
 )
-
-
+app.add_middleware(
+    CSRFMiddleware,
+)
 # ── Exception handlers ─────────────────────────────────────────────────────────
 # All handlers produce the same flat envelope:
 # {"success": false, "error": "<human label>", "detail": "<message>"}

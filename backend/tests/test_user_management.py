@@ -156,7 +156,7 @@ class TestDeactivatedUserAuth:
             json={"email": "owner@umtest.com", "password": "password123"},
         )
         assert resp.status_code == 200
-        assert "access_token" in resp.json()
+        assert resp.json().get("authenticated") is True
 
     def test_deactivated_token_rejected_on_me(self, um_client):
         """Even if a deactivated user holds a valid JWT, /auth/me must return 401."""
