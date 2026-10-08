@@ -24,17 +24,24 @@ HTTP_REQUESTS_IN_PROGRESS = Gauge(
     registry=REGISTRY,
 )
 
+from starlette.routing import Match
+
 def get_route_template(request: Request) -> str:
     """
     Returns the route template (e.g. '/api/v1/projects/{project_id}') if a route is matched,
     otherwise returns '<unmatched>'.
     """
-    if hasattr(request.state, "route") and request.state.route:
-        # FastAPI might store route on state in some versions/middlewares, but normally it's on scope
-        pass
-    
     route = request.scope.get("route")
+    if not route:
+        for r in request.app.routes:
+            match, _ = r.matches(request.scope)
+            if match == Match.FULL:
+                route = r
+                request.scope["route"] = r
+                break
+                
     if route and hasattr(route, "path"):
         return route.path
     
     return "<unmatched>"
+

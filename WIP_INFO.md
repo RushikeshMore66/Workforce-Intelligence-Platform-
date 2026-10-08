@@ -8,7 +8,7 @@ The Workforce Intelligence Platform (WIP) is a comprehensive SaaS application de
 ### Frontend
 - **Framework:** Next.js (React)
 - **Styling:** Tailwind CSS
-- **Authentication:** JWT-based authentication stored in `localStorage`
+- **Authentication:** JWT-based authentication stored in `HttpOnly` cookies (secure), with a login flag in `localStorage`
 - **Data Fetching:** Custom `apiClient` wrapping standard `fetch` API, communicating directly with the backend.
 - **Key Features:**
   - Real-time dashboard with dynamic metrics

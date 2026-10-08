@@ -27,9 +27,9 @@ def test_request_counter_increases(client_metrics: TestClient):
     text = response.text
     
     # Verify the metric contains the correct labels
-    # prometheus_client outputs labels like: workforce_http_requests_total{method="GET",route="/api/v1/health/live",status="200"}
-    assert 'workforce_http_requests_total{method="GET",route="/api/v1/health/live",status="200"}' in text or \
-           'workforce_http_requests_total_total{method="GET",route="/api/v1/health/live",status="200"}' in text
+    # prometheus_client outputs labels like: workforce_http_requests_total{method="GET",route="/health/live",status="200"}
+    assert 'workforce_http_requests_total{method="GET",route="/health/live",status="200"}' in text or \
+           'workforce_http_requests_total_total{method="GET",route="/health/live",status="200"}' in text
 
 def test_duration_histogram_exists(client_metrics: TestClient):
     """Test 3 — Duration Histogram Exists"""
@@ -54,8 +54,8 @@ def test_dynamic_ids_are_not_labels(client_metrics: TestClient):
     client_metrics.get("/api/v1/projects/123")
     
     metrics_response = client_metrics.get("/metrics")
-    assert 'route="/api/v1/projects/{project_id}"' in metrics_response.text
-    assert 'route="/api/v1/projects/123"' not in metrics_response.text
+    assert 'route="/projects/{project_id}"' in metrics_response.text
+    assert 'route="/projects/123"' not in metrics_response.text
 
 def test_status_codes_are_recorded(client_metrics: TestClient):
     """Test 6 — Status Codes Are Recorded"""

@@ -265,11 +265,10 @@ class UserManagementService:
             changed_fields.append("avatar_initials")
 
         if data.role is not None and data.role != user.role:
-            # Only owners can change roles
-            if actor.role != UserRoleEnum.OWNER:
-                raise PermissionDeniedException("Only owners can change a user's role.")
-            user.role = data.role
-            changed_fields.append("role")
+            raise BusinessRuleException(
+                "Role changes are not supported via the update endpoint because they require complex profile migrations. "
+                "Please deactivate the current user and create a new user with the desired role."
+            )
 
         if changed_fields:
             user.updated_at = datetime.utcnow()

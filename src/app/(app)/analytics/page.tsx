@@ -11,9 +11,9 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
 const CHART_COLORS = {
-  todo: '#E5E7EB',
+  planned: '#E5E7EB',
   inProgress: '#263B80',
-  blocked: '#F04438',
+  onHold: '#F04438',
   completed: '#12B76A',
   overdue: '#B08A3E',
   unassigned: '#667085',
@@ -85,9 +85,9 @@ export default function AnalyticsPage() {
   const { workforce, workload, activity, delivery, attention } = data;
 
   const workloadChartData = [
-    { name: 'To Do', value: workload.todo, fill: CHART_COLORS.todo },
+    { name: 'Planned', value: workload.planned, fill: CHART_COLORS.planned },
     { name: 'In Progress', value: workload.inProgress, fill: CHART_COLORS.inProgress },
-    { name: 'Blocked', value: workload.blocked, fill: CHART_COLORS.blocked },
+    { name: 'On Hold', value: workload.onHold, fill: CHART_COLORS.onHold },
     { name: 'Completed', value: workload.completed, fill: CHART_COLORS.completed },
     { name: 'Overdue', value: workload.overdue, fill: CHART_COLORS.overdue },
     { name: 'Unassigned', value: workload.unassigned, fill: CHART_COLORS.unassigned },
@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
               <span>Completion Rate</span> <span className="font-medium text-gray-900">{(delivery.completionRate * 100).toFixed(1)}%</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span>Average Cycle Time (Hours)</span> <span className="font-medium text-gray-900">{delivery.averageCycleTime ? delivery.averageCycleTime.toFixed(1) : 'N/A'}</span>
+              <span>Average Cycle Time (Hours)</span> <span className="font-medium text-gray-900">{delivery.averageCycleTimeHours ? delivery.averageCycleTimeHours.toFixed(1) : 'N/A'}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span>Tasks with Transition History</span> <span className="font-medium text-gray-900">{delivery.tasksWithValidTransitionHistory}</span>
@@ -222,8 +222,8 @@ export default function AnalyticsPage() {
             <p className="text-2xl font-semibold text-orange-700 mt-1">{attention.overdueTasks}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-orange-100">
-            <p className="text-xs text-gray-500 font-medium">Blocked Tasks</p>
-            <p className="text-2xl font-semibold text-orange-700 mt-1">{attention.blockedTasks}</p>
+            <p className="text-xs text-gray-500 font-medium">Blocked / On Hold Tasks</p>
+            <p className="text-2xl font-semibold text-orange-700 mt-1">{attention.onHoldTasks}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-orange-100">
             <p className="text-xs text-gray-500 font-medium">Unassigned Tasks</p>
