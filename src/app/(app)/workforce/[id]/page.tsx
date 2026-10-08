@@ -178,15 +178,15 @@ export default function WorkerDetailPage() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
                   <div className="text-xs text-[#667085] mb-1">Total Tasks</div>
-                  <div className="text-xl font-bold text-[#172033]">{analyticsData.workload.totalTasks ?? analyticsData.workload.total ?? 0}</div>
+                  <div className="text-xl font-bold text-[#172033]">{analyticsData.workload.total ?? 0}</div>
                 </div>
                 <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
                   <div className="text-xs text-[#667085] mb-1">Overdue</div>
                   <div className="text-xl font-bold text-[#B08A3E]">{analyticsData.workload.overdue ?? 0}</div>
                 </div>
                 <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
-                  <div className="text-xs text-[#667085] mb-1">Blocked</div>
-                  <div className="text-xl font-bold text-[#F04438]">{analyticsData.workload.blocked ?? 0}</div>
+                  <div className="text-xs text-[#667085] mb-1">On Hold</div>
+                  <div className="text-xl font-bold text-[#F04438]">{analyticsData.workload.onHold ?? 0}</div>
                 </div>
                 <div className="bg-[#F9FAFB] border border-[#E7E8EC] rounded-lg p-4">
                   <div className="text-xs text-[#667085] mb-1">Completed</div>
@@ -196,9 +196,9 @@ export default function WorkerDetailPage() {
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'To Do', value: analyticsData.workload.todo, fill: '#E5E7EB' },
+                    { name: 'Planned', value: analyticsData.workload.planned, fill: '#E5E7EB' },
                     { name: 'In Progress', value: analyticsData.workload.inProgress, fill: '#263B80' },
-                    { name: 'Blocked', value: analyticsData.workload.blocked, fill: '#F04438' },
+                    { name: 'On Hold', value: analyticsData.workload.onHold, fill: '#F04438' },
                     { name: 'Completed', value: analyticsData.workload.completed, fill: '#12B76A' },
                   ]} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />

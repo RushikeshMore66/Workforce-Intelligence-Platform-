@@ -12,8 +12,9 @@ from app.schemas.dashboard import AttentionItemOut, DashboardMetricsOut
 
 
 class DashboardService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, current_user: "User" = None):
         self.db = db
+        self.current_user = current_user
 
     def get_metrics(self) -> DashboardMetricsOut:
         total_workers = self.db.query(Worker).count()
