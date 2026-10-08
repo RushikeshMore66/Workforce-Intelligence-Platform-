@@ -24,7 +24,13 @@ UMSession = sessionmaker(autocommit=False, autoflush=False, bind=um_engine)
 
 
 def make_token(user_id: str, role: str) -> str:
-    return create_jwt_token(user_id=user_id, role=role).access_token
+    db = UMSession()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        sv = user.session_version if user and user.session_version is not None else 1
+    finally:
+        db.close()
+    return create_jwt_token(user_id=user_id, role=role, session_version=sv).access_token
 
 
 def auth_header(user_id: str, role: str) -> dict:
@@ -539,4 +545,138 @@ class TestChangePassword:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 422
+
+
+# ─────────────────────────────────────────────
+# Session Revocation
+# ─────────────────────────────────────────────
+
+class TestSessionRevocation:
+    def test_password_change_invalidates_existing_token(
+        self,
+        um_client,
+    ):
+        """
+        Changing a password must invalidate tokens issued
+        before the password change.
+        """
+
+        # Create a temporary standalone user.
+        db = UMSession()
+
+        user = User(
+            id="session-password-user",
+            name="Session Password User",
+            email="session-password@umtest.com",
+            hashed_password=get_password_hash(
+                "password123"
+            ),
+            role=UserRoleEnum.WORKER,
+            avatar_initials="SP",
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.close()
+
+        old_token = make_token(
+            "session-password-user",
+            "WORKER",
+        )
+
+        response = um_client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "current_password": "password123",
+                "new_password": "newpassword789",
+            },
+            headers={
+                "Authorization": (
+                    f"Bearer {old_token}"
+                )
+            },
+        )
+
+        assert response.status_code == 204
+
+        old_session_response = um_client.get(
+            "/api/v1/auth/me",
+            headers={
+                "Authorization": (
+                    f"Bearer {old_token}"
+                )
+            },
+        )
+
+        assert (
+            old_session_response.status_code
+            == 401
+        )
+
+    def test_deactivate_then_reactivate_invalidates_old_token(
+        self,
+        um_client,
+    ):
+        """
+        A token issued before deactivation must remain invalid
+        even after the account is later reactivated.
+        """
+
+        db = UMSession()
+
+        user = User(
+            id="session-lifecycle-user",
+            name="Session Lifecycle User",
+            email="session-lifecycle@umtest.com",
+            hashed_password=get_password_hash(
+                "password123"
+            ),
+            role=UserRoleEnum.WORKER,
+            avatar_initials="SL",
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.close()
+
+        old_token = make_token(
+            "session-lifecycle-user",
+            "WORKER",
+        )
+
+        # Deactivate.
+        response = um_client.post(
+            "/api/v1/users/session-lifecycle-user/deactivate",
+            headers=auth_header(
+                "um-owner-1",
+                "OWNER",
+            ),
+        )
+
+        assert response.status_code == 200
+
+        # Reactivate.
+        response = um_client.post(
+            "/api/v1/users/session-lifecycle-user/activate",
+            headers=auth_header(
+                "um-owner-1",
+                "OWNER",
+            ),
+        )
+
+        assert response.status_code == 200
+
+        # Old token must STILL be invalid.
+        response = um_client.get(
+            "/api/v1/auth/me",
+            headers={
+                "Authorization": (
+                    f"Bearer {old_token}"
+                )
+            },
+        )
+
+        assert response.status_code == 401
 

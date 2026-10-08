@@ -290,6 +290,7 @@ class UserManagementService:
         user = self._get_user_or_404(user_id)
         if not user.is_active:
             user.is_active = True
+            user.session_version = (getattr(user, "session_version", 1) or 1) + 1
             user.updated_at = datetime.utcnow()
             _write_audit(
                 self.db,
@@ -309,6 +310,7 @@ class UserManagementService:
             raise BusinessRuleException("You cannot deactivate your own account.")
         if user.is_active:
             user.is_active = False
+            user.session_version = (getattr(user, "session_version", 1) or 1) + 1
             user.updated_at = datetime.utcnow()
             _write_audit(
                 self.db,
@@ -372,6 +374,7 @@ class UserManagementService:
             raise BusinessRuleException("Current password is incorrect.")
 
         user.hashed_password = get_password_hash(new_password)
+        user.session_version = (getattr(user, "session_version", 1) or 1) + 1
         user.updated_at = datetime.utcnow()
 
         _write_audit(

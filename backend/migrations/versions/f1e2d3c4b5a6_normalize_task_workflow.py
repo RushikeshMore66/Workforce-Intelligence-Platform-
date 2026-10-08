@@ -36,25 +36,7 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
 
-    # ── 1. Data migration: normalize legacy status values ────────────────────
-    op.execute("UPDATE tasks SET status = 'PLANNED' WHERE status = 'TODO'")
-    op.execute("UPDATE tasks SET status = 'ON_HOLD' WHERE status = 'BLOCKED'")
-
-    op.execute(
-        "UPDATE task_transitions SET from_status = 'PLANNED' WHERE from_status = 'TODO'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET from_status = 'ON_HOLD' WHERE from_status = 'BLOCKED'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET to_status = 'PLANNED' WHERE to_status = 'TODO'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET to_status = 'ON_HOLD' WHERE to_status = 'BLOCKED'"
-    )
-
-    # ── 2. PostgreSQL: replace the enum type ─────────────────────────────────
-    # SQLite stores enum values as VARCHAR — no ALTER TYPE needed.
+    # ── 1 & 2. Migrate column data and enum type ─────────────────────────────
     if dialect == "postgresql":
         op.execute("ALTER TYPE task_status_enum RENAME TO task_status_enum_old")
         op.execute(
@@ -65,23 +47,50 @@ def upgrade() -> None:
         op.execute(
             "ALTER TABLE tasks "
             "ALTER COLUMN status TYPE task_status_enum "
-            "USING status::text::task_status_enum"
+            "USING CASE "
+            "WHEN status::text = 'TODO' THEN 'PLANNED'::task_status_enum "
+            "WHEN status::text = 'BLOCKED' THEN 'ON_HOLD'::task_status_enum "
+            "ELSE status::text::task_status_enum "
+            "END"
         )
         op.execute(
             "ALTER TABLE task_transitions "
             "ALTER COLUMN from_status TYPE task_status_enum "
             "USING CASE "
             "WHEN from_status IS NULL THEN NULL "
+            "WHEN from_status::text = 'TODO' THEN 'PLANNED'::task_status_enum "
+            "WHEN from_status::text = 'BLOCKED' THEN 'ON_HOLD'::task_status_enum "
             "ELSE from_status::text::task_status_enum "
             "END"
         )
         op.execute(
             "ALTER TABLE task_transitions "
             "ALTER COLUMN to_status TYPE task_status_enum "
-            "USING to_status::text::task_status_enum"
+            "USING CASE "
+            "WHEN to_status::text = 'TODO' THEN 'PLANNED'::task_status_enum "
+            "WHEN to_status::text = 'BLOCKED' THEN 'ON_HOLD'::task_status_enum "
+            "ELSE to_status::text::task_status_enum "
+            "END"
         )
 
         op.execute("DROP TYPE task_status_enum_old")
+    else:
+        # SQLite stores enum values as VARCHAR — no ALTER TYPE needed.
+        op.execute("UPDATE tasks SET status = 'PLANNED' WHERE status = 'TODO'")
+        op.execute("UPDATE tasks SET status = 'ON_HOLD' WHERE status = 'BLOCKED'")
+
+        op.execute(
+            "UPDATE task_transitions SET from_status = 'PLANNED' WHERE from_status = 'TODO'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET from_status = 'ON_HOLD' WHERE from_status = 'BLOCKED'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET to_status = 'PLANNED' WHERE to_status = 'TODO'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET to_status = 'ON_HOLD' WHERE to_status = 'BLOCKED'"
+        )
 
     # ── 3. Add reason column to task_transitions ─────────────────────────────
     # Check if column already exists (idempotent — safe to run multiple times).
@@ -101,32 +110,6 @@ def downgrade() -> None:
     # Remove reason column
     op.drop_column("task_transitions", "reason")
 
-    # Revert data: map new statuses back to legacy vocabulary.
-    # CANCELLED has no direct predecessor — map to IN_PROGRESS as the
-    # closest active state.
-    op.execute("UPDATE tasks SET status = 'TODO' WHERE status = 'PLANNED'")
-    op.execute("UPDATE tasks SET status = 'BLOCKED' WHERE status = 'ON_HOLD'")
-    op.execute("UPDATE tasks SET status = 'IN_PROGRESS' WHERE status = 'CANCELLED'")
-
-    op.execute(
-        "UPDATE task_transitions SET from_status = 'TODO' WHERE from_status = 'PLANNED'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET from_status = 'BLOCKED' WHERE from_status = 'ON_HOLD'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET from_status = 'IN_PROGRESS' WHERE from_status = 'CANCELLED'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET to_status = 'TODO' WHERE to_status = 'PLANNED'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET to_status = 'BLOCKED' WHERE to_status = 'ON_HOLD'"
-    )
-    op.execute(
-        "UPDATE task_transitions SET to_status = 'IN_PROGRESS' WHERE to_status = 'CANCELLED'"
-    )
-
     if dialect == "postgresql":
         op.execute("ALTER TYPE task_status_enum RENAME TO task_status_enum_new")
         op.execute(
@@ -137,20 +120,56 @@ def downgrade() -> None:
         op.execute(
             "ALTER TABLE tasks "
             "ALTER COLUMN status TYPE task_status_enum "
-            "USING status::text::task_status_enum"
+            "USING CASE "
+            "WHEN status::text = 'PLANNED' THEN 'TODO'::task_status_enum "
+            "WHEN status::text = 'ON_HOLD' THEN 'BLOCKED'::task_status_enum "
+            "WHEN status::text = 'CANCELLED' THEN 'IN_PROGRESS'::task_status_enum "
+            "ELSE status::text::task_status_enum "
+            "END"
         )
         op.execute(
             "ALTER TABLE task_transitions "
             "ALTER COLUMN from_status TYPE task_status_enum "
             "USING CASE "
             "WHEN from_status IS NULL THEN NULL "
+            "WHEN from_status::text = 'PLANNED' THEN 'TODO'::task_status_enum "
+            "WHEN from_status::text = 'ON_HOLD' THEN 'BLOCKED'::task_status_enum "
+            "WHEN from_status::text = 'CANCELLED' THEN 'IN_PROGRESS'::task_status_enum "
             "ELSE from_status::text::task_status_enum "
             "END"
         )
         op.execute(
             "ALTER TABLE task_transitions "
             "ALTER COLUMN to_status TYPE task_status_enum "
-            "USING to_status::text::task_status_enum"
+            "USING CASE "
+            "WHEN to_status::text = 'PLANNED' THEN 'TODO'::task_status_enum "
+            "WHEN to_status::text = 'ON_HOLD' THEN 'BLOCKED'::task_status_enum "
+            "WHEN to_status::text = 'CANCELLED' THEN 'IN_PROGRESS'::task_status_enum "
+            "ELSE to_status::text::task_status_enum "
+            "END"
         )
 
         op.execute("DROP TYPE task_status_enum_new")
+    else:
+        op.execute("UPDATE tasks SET status = 'TODO' WHERE status = 'PLANNED'")
+        op.execute("UPDATE tasks SET status = 'BLOCKED' WHERE status = 'ON_HOLD'")
+        op.execute("UPDATE tasks SET status = 'IN_PROGRESS' WHERE status = 'CANCELLED'")
+
+        op.execute(
+            "UPDATE task_transitions SET from_status = 'TODO' WHERE from_status = 'PLANNED'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET from_status = 'BLOCKED' WHERE from_status = 'ON_HOLD'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET from_status = 'IN_PROGRESS' WHERE from_status = 'CANCELLED'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET to_status = 'TODO' WHERE to_status = 'PLANNED'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET to_status = 'BLOCKED' WHERE to_status = 'ON_HOLD'"
+        )
+        op.execute(
+            "UPDATE task_transitions SET to_status = 'IN_PROGRESS' WHERE to_status = 'CANCELLED'"
+        )

@@ -50,6 +50,20 @@ def get_current_user(
     if user is None:
         raise credentials_exception
 
+    # Session revocation check — verify that the token's session version matches
+    # the user's current session_version in the database. Tokens issued prior to
+    # password change or account deactivation/reactivation are rejected immediately.
+    token_sv = payload.get("sv")
+    if token_sv is None:
+        token_sv = payload.get("session_version")
+    user_sv = getattr(user, "session_version", 1) or 1
+    if token_sv is not None:
+        if int(token_sv) != user_sv:
+            raise credentials_exception
+    else:
+        if user_sv > 1:
+            raise credentials_exception
+
     # Account lifecycle check — deactivated users must not be able to continue
     # using a previously issued token.  This is checked on every request so that
     # deactivation takes effect without waiting for token expiry.

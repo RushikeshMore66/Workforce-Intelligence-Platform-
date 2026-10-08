@@ -20,4 +20,8 @@ class AuthService:
         # Return None (same shape as wrong-password) to avoid leaking account existence.
         if not user.is_active:
             return None
-        return create_jwt_token(user_id=user.id, role=user.role.value)
+        return create_jwt_token(
+            user_id=user.id,
+            role=user.role.value,
+            session_version=user.session_version if user.session_version is not None else 1,
+        )
