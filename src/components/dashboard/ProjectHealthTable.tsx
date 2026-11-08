@@ -1,89 +1,74 @@
+'use client';
+
 import Link from 'next/link';
-import { Project, Supervisor } from '@/types';
-import { Progress } from '@/components/ui/progress';
+import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
+import { Project, Supervisor } from '@/types';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { cn, daysUntil } from '@/lib/utils';
+import { EASE_OUT, slideX, stagger } from '@/lib/motion';
 
-interface Props {
-  projects: Project[];
-  supervisors: Supervisor[];
-}
+interface Props { projects: Project[]; supervisors: Supervisor[] }
 
-function HealthDot({ health }: { health: Project['health'] }) {
-  const colors = {
-    ON_TRACK: 'bg-[#12B76A]',
-    AT_RISK:  'bg-[#F79009]',
-    DELAYED:  'bg-[#F04438]',
-  };
-  const labels = { ON_TRACK: 'On Track', AT_RISK: 'At Risk', DELAYED: 'Delayed' };
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`inline-block w-2 h-2 rounded-full ${colors[health]}`} />
-      <span className={`text-xs font-medium ${
-        health === 'ON_TRACK' ? 'text-[#027A48]' :
-        health === 'AT_RISK'  ? 'text-[#B54708]' : 'text-[#B42318]'
-      }`}>{labels[health]}</span>
-    </span>
-  );
-}
+const HEALTH = {
+  ON_TRACK: { chip: 'bg-[#ECFDF3] text-[#027A48]', bar: 'bg-[#12B76A]', label: 'On track' },
+  AT_RISK:  { chip: 'bg-[#FFFAEB] text-[#B54708]', bar: 'bg-[#F79009]', label: 'At risk' },
+  DELAYED:  { chip: 'bg-[#FEF3F2] text-[#B42318]', bar: 'bg-[#F04438]', label: 'Delayed' },
+} as const;
 
 export function ProjectHealthTable({ projects, supervisors }: Props) {
   const supMap = Object.fromEntries(supervisors.map(s => [s.id, s]));
-  const topProjects = projects
-    .filter(p => p.status === 'ACTIVE')
-    .sort((a, b) => {
-      const healthOrder = { DELAYED: 0, AT_RISK: 1, ON_TRACK: 2 };
-      return healthOrder[a.health] - healthOrder[b.health];
-    })
-    .slice(0, 6);
+  const order = { DELAYED: 0, AT_RISK: 1, ON_TRACK: 2 };
+  const top = projects.filter(p => p.status === 'ACTIVE').sort((a, b) => order[a.health] - order[b.health]).slice(0, 6);
 
   return (
-    <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-[0_1px_3px_0_rgba(16,24,40,0.06)] overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#E7E8EC]">
-        <h2 className="text-sm font-semibold text-[#172033]">Project Health</h2>
-        <Link href="/projects" className="text-xs font-medium text-[#263B80] hover:underline flex items-center gap-1">
-          View all <ArrowRight className="w-3 h-3" />
+    <GlassPanel
+      title="Project Health"
+      subtitle="Most urgent active projects first"
+      action={
+        <Link href="/projects" className="group glass-pill rounded-full h-8 px-3 text-xs font-medium text-[#172033] flex items-center gap-1.5 hover:bg-white transition">
+          View all <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
         </Link>
-      </div>
-
-      <div className="divide-y divide-[#F3F4F6]">
-        {topProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center">
-            <p className="text-sm text-[#667085]">No active projects found.</p>
-          </div>
-        ) : (
-          topProjects.map(proj => {
+      }
+      bodyClassName="px-3 pb-3"
+    >
+      {top.length === 0 ? (
+        <p className="p-6 text-sm text-[#667085] text-center">No active projects found.</p>
+      ) : (
+        <motion.ul variants={stagger(0.05, 0.1)} initial="hidden" whileInView="show" viewport={{ once: true }} className="space-y-1">
+          {top.map((proj, i) => {
             const sup = proj.supervisorId ? supMap[proj.supervisorId] : undefined;
-            const daysLeft = Math.ceil(
-              (new Date(proj.deadline).getTime() - new Date().getTime()) / 86400000
-            );
+            const daysLeft = daysUntil(proj.deadline);
+            const h = HEALTH[proj.health];
             return (
-              <div key={proj.id} className="px-5 py-3.5 hover:bg-[#F9FAFB] transition-colors">
-                <div className="flex items-center gap-4">
+              <motion.li key={proj.id} variants={slideX}>
+                <Link href={`/projects/${proj.id}`} className="flex items-center gap-4 rounded-2xl px-3 py-3 hover:bg-white/80 hover:shadow-[0_6px_16px_-10px_rgba(23,32,51,0.25)] transition group">
                   <div className="flex-1 min-w-0">
-                    <Link href={`/projects/${proj.id}`} className="text-sm font-medium text-[#172033] hover:text-[#263B80] truncate block transition-colors">
-                      {proj.name}
-                    </Link>
-                    <div className="text-xs text-[#667085] mt-0.5">{proj.client}</div>
+                    <div className="text-sm font-semibold text-[#172033] truncate group-hover:text-[#263B80] transition-colors">{proj.name}</div>
+                    <div className="text-xs text-[#667085] mt-0.5 truncate">{proj.client}{sup ? ` · ${sup.name}` : ''}</div>
                   </div>
-                  <div className="hidden md:flex items-center gap-1 text-xs text-[#667085] min-w-[100px]">
-                    {sup?.name ?? '—'}
+                  <div className="flex items-center gap-2 w-[130px]">
+                    <div className="relative h-1.5 flex-1 rounded-full bg-[#E5E7EB] overflow-hidden" role="progressbar" aria-valuenow={proj.progress} aria-valuemin={0} aria-valuemax={100}>
+                      <motion.div
+                        className={cn('absolute inset-y-0 left-0 rounded-full', h.bar)}
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${proj.progress}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.9, delay: 0.2 + i * 0.06, ease: EASE_OUT }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-[#172033] w-8 text-right tabular-nums">{proj.progress}%</span>
                   </div>
-                  <div className="flex items-center gap-2 min-w-[120px]">
-                    <Progress value={proj.progress} className="flex-1" />
-                    <span className="text-xs text-[#667085] font-medium w-8 text-right">{proj.progress}%</span>
-                  </div>
-                  <div className="hidden sm:block min-w-[72px] text-right">
-                    <HealthDot health={proj.health} />
-                  </div>
-                  <div className={`text-xs font-medium min-w-[64px] text-right ${daysLeft < 30 ? 'text-[#B54708]' : 'text-[#667085]'}`}>
+                  <span className={cn('hidden sm:inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold', h.chip)}>{h.label}</span>
+                  <span className={cn('text-xs font-medium w-14 text-right tabular-nums', daysLeft < 30 ? 'text-[#B54708]' : 'text-[#667085]')}>
                     {daysLeft > 0 ? `${daysLeft}d` : 'Overdue'}
-                  </div>
-                </div>
-              </div>
+                  </span>
+                </Link>
+              </motion.li>
             );
-          })
-        )}
-      </div>
-    </div>
+          })}
+        </motion.ul>
+      )}
+    </GlassPanel>
   );
 }
