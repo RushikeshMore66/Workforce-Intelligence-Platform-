@@ -1,14 +1,8 @@
 'use client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-
-const teamData = [
-  { team: 'Backend', members: 18 },
-  { team: 'Frontend', members: 15 },
-  { team: 'QA', members: 12 },
-  { team: 'Product', members: 10 },
-  { team: 'UI/UX', members: 8 },
-  { team: 'DevOps', members: 7 },
-];
+import { TeamViewModel } from '@/types';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 
 const COLORS = ['#263B80', '#3B52A5', '#4F68CA', '#B08A3E', '#C9A85C', '#E2C87A'];
 
@@ -17,55 +11,53 @@ interface Props {
   activeToday: number;
   onLeave: number;
   unavailable: number;
+  teams: TeamViewModel[];
 }
 
-export function WorkforceOverview({ totalWorkers, activeToday, onLeave, unavailable }: Props) {
+export function WorkforceOverview({ totalWorkers, activeToday, onLeave, unavailable, teams }: Props) {
+  const teamData = [...teams]
+    .sort((a, b) => b.memberCount - a.memberCount)
+    .slice(0, 6)
+    .map(t => ({ team: t.name.length > 9 ? `${t.name.slice(0, 8)}…` : t.name, full: t.name, members: t.memberCount }));
+
+  const stats = [
+    { label: 'Active', value: activeToday, tone: 'bg-[#ECFDF3] text-[#027A48]' },
+    { label: 'On leave', value: onLeave, tone: 'bg-[#FFFAEB] text-[#B54708]' },
+    { label: 'Unavailable', value: unavailable, tone: 'bg-[#F3F4F6] text-[#667085]' },
+  ];
+
   return (
-    <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-[0_1px_3px_0_rgba(16,24,40,0.06)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E7E8EC]">
-        <h2 className="text-sm font-semibold text-[#172033]">Workforce Overview</h2>
+    <GlassPanel title="Workforce Overview" subtitle={`${totalWorkers.toLocaleString('en-IN')} total workers`} bodyClassName="p-6 pt-2 space-y-5">
+      <div className="grid grid-cols-3 gap-2.5">
+        {stats.map(s => (
+          <div key={s.label} className={`rounded-2xl px-3 py-3 text-center ${s.tone}`}>
+            <AnimatedNumber value={s.value} className="text-xl font-bold tabular-nums" />
+            <div className="text-[11px] mt-0.5 opacity-80">{s.label}</div>
+          </div>
+        ))}
       </div>
-      <div className="p-5 space-y-5">
-        {/* Status grid */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Active Today', value: activeToday, color: 'text-[#027A48]' },
-            { label: 'On Leave',     value: onLeave,     color: 'text-[#B54708]' },
-            { label: 'Unavailable',  value: unavailable, color: 'text-[#667085]' },
-          ].map(stat => (
-            <div key={stat.label} className="text-center">
-              <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
-              <div className="text-[11px] text-[#9CA3AF] mt-0.5">{stat.label}</div>
-            </div>
-          ))}
-        </div>
 
-        <div className="border-t border-[#F3F4F6]" />
-
-        {/* Team distribution chart */}
-        <div>
-          <div className="text-xs font-semibold text-[#667085] uppercase tracking-wider mb-3">Team Distribution</div>
-          <ResponsiveContainer width="100%" height={130}>
-            <BarChart data={teamData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+      <div>
+        <div className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-2">Team distribution</div>
+        {teamData.length === 0 ? (
+          <p className="text-xs text-[#667085] py-6 text-center">No team data available.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={teamData} margin={{ top: 4, right: 0, left: -24, bottom: 0 }}>
               <XAxis dataKey="team" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ border: '1px solid #E7E8EC', borderRadius: 8, fontSize: 12 }}
-                cursor={{ fill: '#F3F4F6' }}
+                labelFormatter={(_, p) => p?.[0]?.payload?.full ?? ''}
+                contentStyle={{ border: 'none', borderRadius: 12, fontSize: 12, boxShadow: '0 10px 30px -10px rgba(23,32,51,0.3)' }}
+                cursor={{ fill: 'rgba(38,59,128,0.06)', radius: 8 }}
               />
-              <Bar dataKey="members" radius={[3, 3, 0, 0]}>
-                {teamData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
+              <Bar dataKey="members" radius={[8, 8, 8, 8]} animationDuration={900}>
+                {teamData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
-        <div className="text-xs text-[#667085] text-center">
-          {totalWorkers} total workers across 6 teams
-        </div>
+        )}
       </div>
-    </div>
+    </GlassPanel>
   );
 }

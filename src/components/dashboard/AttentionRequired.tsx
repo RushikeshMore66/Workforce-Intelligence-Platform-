@@ -1,59 +1,68 @@
-import Link from 'next/link';
-import { AttentionItem } from '@/types';
-import { AlertTriangle, Clock, ShieldAlert, Zap, Eye, ChevronRight } from 'lucide-react';
+'use client';
 
-interface Props {
-  items: AttentionItem[];
-}
+import Link from 'next/link';
+import { motion } from 'motion/react';
+import { AlertTriangle, Clock, ShieldAlert, Zap, Eye, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { AttentionItem } from '@/types';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { slideX, stagger } from '@/lib/motion';
 
 const TYPE_CONFIG = {
-  DEADLINE: { icon: Clock,        bg: 'bg-[#FFFAEB]', border: 'border-[#FEDF89]', iconColor: 'text-[#B54708]' },
-  BLOCKER:  { icon: ShieldAlert,  bg: 'bg-[#FEF3F2]', border: 'border-[#FECDCA]', iconColor: 'text-[#B42318]' },
-  RISK:     { icon: AlertTriangle,bg: 'bg-[#FEF3F2]', border: 'border-[#FECDCA]', iconColor: 'text-[#B42318]' },
-  OVERLOAD: { icon: Zap,          bg: 'bg-[#FFFAEB]', border: 'border-[#FEDF89]', iconColor: 'text-[#B54708]' },
-  REVIEW:   { icon: Eye,          bg: 'bg-[#EFF8FF]', border: 'border-[#B2DDFF]', iconColor: 'text-[#1849A9]' },
-};
+  DEADLINE: { icon: Clock,         chip: 'bg-[#FFFAEB] text-[#B54708]' },
+  BLOCKER:  { icon: ShieldAlert,   chip: 'bg-[#FEF3F2] text-[#B42318]' },
+  RISK:     { icon: AlertTriangle, chip: 'bg-[#FEF3F2] text-[#B42318]' },
+  OVERLOAD: { icon: Zap,           chip: 'bg-[#FFFAEB] text-[#B54708]' },
+  REVIEW:   { icon: Eye,           chip: 'bg-[#EFF8FF] text-[#1849A9]' },
+} as const;
 
-const PRIORITY_DOT = {
-  HIGH:   'bg-[#F04438]',
-  MEDIUM: 'bg-[#F79009]',
-  LOW:    'bg-[#12B76A]',
-};
+const PRIORITY = {
+  HIGH:   { dot: 'bg-[#F04438]', label: 'High' },
+  MEDIUM: { dot: 'bg-[#F79009]', label: 'Medium' },
+  LOW:    { dot: 'bg-[#12B76A]', label: 'Low' },
+} as const;
 
-export function AttentionRequired({ items }: Props) {
+export function AttentionRequired({ items }: { items: AttentionItem[] }) {
   return (
-    <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-[0_1px_3px_0_rgba(16,24,40,0.06)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E7E8EC]">
-        <h2 className="text-sm font-semibold text-[#172033]">Attention Required</h2>
-        <p className="text-xs text-[#667085] mt-0.5">{items.length} items need your review</p>
-      </div>
-      <div className="divide-y divide-[#F3F4F6]">
-        {items.map(item => {
-          const cfg = TYPE_CONFIG[item.type];
-          const Icon = cfg.icon;
-          return (
-            <div key={item.id} className="px-5 py-4 flex items-start gap-3 hover:bg-[#F9FAFB] transition-colors">
-              <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 border ${cfg.bg} ${cfg.border}`}>
-                <Icon className={`w-3.5 h-3.5 ${cfg.iconColor}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[#172033] leading-snug">{item.title}</div>
-                    <div className="text-xs text-[#667085] mt-0.5 line-clamp-2">{item.description}</div>
-                  </div>
-                  <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${PRIORITY_DOT[item.priority]}`} />
+    <GlassPanel
+      title="Attention Required"
+      subtitle={items.length ? `${items.length} item${items.length === 1 ? '' : 's'} need your review` : 'All clear'}
+      bodyClassName="px-3 pb-3"
+    >
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-[#667085]">
+          <CheckCircle2 className="w-8 h-8 text-[#12B76A]" />
+          Nothing needs your attention.
+        </div>
+      ) : (
+        <motion.ul variants={stagger(0.06, 0.1)} initial="hidden" whileInView="show" viewport={{ once: true }} className="space-y-1.5 max-h-[420px] overflow-y-auto">
+          {items.map(item => {
+            const cfg = TYPE_CONFIG[item.type];
+            const pr = PRIORITY[item.priority];
+            const Icon = cfg.icon;
+            return (
+              <motion.li key={item.id} variants={slideX} whileHover={{ x: 3 }} className="rounded-2xl glass-tile p-3 flex items-start gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.chip}`}>
+                  <Icon className="w-4 h-4" />
                 </div>
-                {item.projectId && (
-                  <Link href={`/projects/${item.projectId}`} className="inline-flex items-center gap-1 text-xs text-[#263B80] hover:underline mt-1.5 font-medium">
-                    View project <ChevronRight className="w-3 h-3" />
-                  </Link>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-[#172033] leading-snug">{item.title}</div>
+                      <div className="text-xs text-[#667085] mt-0.5 line-clamp-2">{item.description}</div>
+                    </div>
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${pr.dot}`} title={`${pr.label} priority`} aria-label={`${pr.label} priority`} />
+                  </div>
+                  {item.projectId && (
+                    <Link href={`/projects/${item.projectId}`} className="inline-flex items-center gap-0.5 text-xs text-[#263B80] hover:gap-1.5 mt-1.5 font-semibold transition-all">
+                      View project <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                </div>
+              </motion.li>
+            );
+          })}
+        </motion.ul>
+      )}
+    </GlassPanel>
   );
 }

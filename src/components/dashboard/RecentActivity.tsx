@@ -1,4 +1,9 @@
+'use client';
+
+import { motion } from 'motion/react';
 import { ProjectActivity, ActivityType } from '@/types';
+import { GlassPanel } from '@/components/ui/glass-panel';
+import { slideX, stagger } from '@/lib/motion';
 import { timeAgo } from '@/lib/utils';
 import { CheckCircle2, AlertTriangle, RefreshCw, UserPlus, Pencil, FolderOpen, GitBranch, User, Users, Activity } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
@@ -31,33 +36,31 @@ const TYPE_ICON: Record<ActivityType, { Icon: React.ElementType; color: string }
 
 export function RecentActivity({ activities }: Props) {
   return (
-    <div className="bg-white border border-[#E7E8EC] rounded-xl shadow-[0_1px_3px_0_rgba(16,24,40,0.06)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E7E8EC]">
-        <h2 className="text-sm font-semibold text-[#172033]">Recent Activity</h2>
-      </div>
-      <div className="divide-y divide-[#F3F4F6]">
-        {activities.map(act => {
-          const cfg = TYPE_ICON[act.type] ?? { Icon: Activity, color: 'text-[#667085]' };
-          const { Icon, color } = cfg;
-          return (
-            <div key={act.id} className="flex items-start gap-3 px-5 py-3.5">
-              <Avatar
-                initials={getInitials(act.userName)}
-                name={act.userName}
-                size="xs"
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#172033] leading-snug">{act.description}</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <Icon className={`w-3 h-3 ${color}`} />
-                  <span className="text-[11px] text-[#9CA3AF]">{timeAgo(act.timestamp)}</span>
+    <GlassPanel title="Recent Activity" subtitle="Latest changes across your projects" bodyClassName="px-6 pb-5 pt-1">
+      {activities.length === 0 ? (
+        <p className="py-6 text-sm text-[#667085] text-center">No recent activity.</p>
+      ) : (
+        <motion.ol variants={stagger(0.05, 0.1)} initial="hidden" whileInView="show" viewport={{ once: true }} className="relative space-y-1">
+          <span className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-[#E7E8EC] via-[#E7E8EC] to-transparent" aria-hidden />
+          {activities.map(act => {
+            const { Icon, color } = TYPE_ICON[act.type] ?? { Icon: Activity, color: 'text-[#667085]' };
+            return (
+              <motion.li key={act.id} variants={slideX} className="relative flex items-start gap-3 rounded-2xl px-1 py-2.5 hover:bg-white/70 transition-colors">
+                <span className={`relative z-10 w-[30px] h-[30px] rounded-full glass-tile flex items-center justify-center flex-shrink-0 ${color}`}>
+                  <Icon className="w-3.5 h-3.5" />
+                </span>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-sm text-[#172033] leading-snug">{act.description}</p>
+                  <div className="flex items-center gap-2 mt-1 text-[11px] text-[#9CA3AF]">
+                    <Avatar initials={getInitials(act.userName)} name={act.userName} size="xs" className="!w-4 !h-4 !text-[8px]" />
+                    <span>{act.userName}</span><span>·</span><span>{timeAgo(act.timestamp)}</span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+              </motion.li>
+            );
+          })}
+        </motion.ol>
+      )}
+    </GlassPanel>
   );
 }

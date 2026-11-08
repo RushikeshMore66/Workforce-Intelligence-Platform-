@@ -1,6 +1,10 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { Search, Bell, ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { Search, Bell, ChevronDown, LogOut, User, Settings, Menu, X } from 'lucide-react';
+import { Sidebar } from '@/components/layout/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/useAuth';
 import { Avatar } from '@/components/ui/avatar';
@@ -36,15 +40,23 @@ export function Topbar() {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
   const { user: currentUser, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Breadcrumb segments for detail pages
   const segments = pathname.split('/').filter(Boolean);
   const isDetailPage = segments.length >= 2;
 
   return (
-    <header className="h-14 bg-white border-b border-[#E7E8EC] flex items-center justify-between px-5 gap-4 flex-shrink-0">
+    <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="glass h-14 rounded-full flex items-center justify-between pl-3 pr-2.5 md:pl-6 gap-3 flex-shrink-0">
       {/* Left: Title / Breadcrumb */}
       <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="md:hidden w-9 h-9 rounded-full glass-pill flex items-center justify-center text-[#172033]"
+          aria-label="Open navigation"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
         {isDetailPage ? (
           <nav className="flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
             <span className="text-[#667085]">{PAGE_TITLES['/' + segments[0]] ?? segments[0]}</span>
@@ -64,8 +76,8 @@ export function Topbar() {
             type="search"
             placeholder="Search projects, workers, teams..."
             className={cn(
-              'w-full h-8 pl-9 pr-3 text-sm rounded-md border border-[#E7E8EC] bg-[#F7F7F5]',
-              'focus:outline-none focus:ring-2 focus:ring-[#263B80]/20 focus:border-[#263B80] focus:bg-white',
+              'w-full h-9 pl-9 pr-3 text-sm rounded-full border border-transparent bg-white/70',
+              'focus:outline-none focus:ring-2 focus:ring-[#263B80]/20 focus:bg-white',
               'placeholder:text-[#9CA3AF] transition-colors'
             )}
           />
@@ -75,7 +87,7 @@ export function Topbar() {
       {/* Right: Notifications + User */}
       <div className="flex items-center gap-2">
         <button
-          className="relative w-8 h-8 rounded-md flex items-center justify-center text-[#667085] hover:bg-[#F3F4F6] hover:text-[#172033] transition-colors"
+          className="relative w-9 h-9 rounded-full glass-pill flex items-center justify-center text-[#667085] hover:text-[#172033] transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4" />
@@ -85,7 +97,7 @@ export function Topbar() {
         {currentUser && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[#F3F4F6] transition-colors">
+              <button className="flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 glass-pill hover:bg-white transition-colors">
                 <Avatar initials={currentUser.avatarInitials} size="xs" />
                 <span className="text-sm font-medium text-[#172033] hidden sm:block">{currentUser.name.split(' ')[0]}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-[#9CA3AF] hidden sm:block" />
@@ -114,6 +126,23 @@ export function Topbar() {
           </DropdownMenu>
         )}
       </div>
-    </header>
+      {typeof document !== 'undefined' && createPortal(<AnimatePresence>
+        {menuOpen && (
+          <motion.div className="fixed inset-0 z-50 md:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-[#172033]/30 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
+            <motion.div
+              initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+              className="absolute left-3 top-3 bottom-3 w-[264px]"
+            >
+              <Sidebar alwaysExpanded onMobileClose={() => setMenuOpen(false)} />
+              <button onClick={() => setMenuOpen(false)} className="absolute top-4 right-3 w-8 h-8 rounded-full glass-pill flex items-center justify-center" aria-label="Close navigation">
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>, document.body)}
+    </motion.header>
   );
 }
